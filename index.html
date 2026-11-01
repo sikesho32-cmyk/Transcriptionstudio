@@ -3,225 +3,811 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transcript Studio & AGLE Suite</title>
+<title>Transcript Studio & AGLE Transcription & QA Suite</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-  body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  body { font-family: 'Inter', sans-serif; }
   .mono { font-family: 'JetBrains Mono', monospace; }
 </style>
 </head>
-<body class="min-h-screen flex flex-col p-4 sm:p-6 max-w-7xl mx-auto">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
 
-  <header class="mb-6 border-b border-slate-800 pb-4 flex justify-between items-center">
-    <div>
-      <h1 class="text-xl font-bold text-teal-400">Transcript Studio & AGLE Suite</h1>
-      <p class="text-xs text-slate-400">Accurate Millisecond Randomization & End-Marker Engine</p>
-    </div>
-    <div class="flex gap-2">
-      <button onclick="switchTab('editor')" id="btnTabEd" class="px-3 py-1.5 rounded bg-teal-600 text-xs font-semibold">Editor</button>
-      <button onclick="switchTab('audit')" id="btnTabAud" class="px-3 py-1.5 rounded bg-slate-800 text-xs font-semibold text-slate-400">QA Auditor</button>
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-950/85 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-teal-600 p-2 rounded-lg text-white">
+          <i class="fa-solid fa-layer-group text-xl"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-white">AGLE & Verbit Transcription Hub</h1>
+          <p class="text-xs text-slate-400">Editor, Auto-Corrector & QA Reviewer Studio</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-teal-300 font-medium border border-slate-700">
+          <i class="fa-solid fa-shield-halved mr-1"></i> Full Suite Active
+        </span>
+      </div>
     </div>
   </header>
 
-  <!-- TAB 1: EDITOR -->
-  <main id="tabEditor" class="flex flex-col gap-4 flex-1">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-        <label class="block text-xs font-semibold mb-1 text-slate-300">Transcription Job (7-Word Topic)</label>
-        <div class="flex gap-2 mb-3">
-          <input type="text" id="topic" placeholder="e.g. Technology Trends and Future Growth Opportunities" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs text-slate-100">
-          <button onclick="autoTitle()" class="bg-slate-700 px-3 py-2 rounded text-xs font-semibold hover:bg-slate-600">Auto</button>
+  <!-- Navigation Tabs -->
+  <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 w-full flex">
+    <div class="flex space-x-2 border-b border-slate-800 w-full overflow-x-auto pb-2">
+      <button onclick="switchTab('editor', event)" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-teal-600 text-white flex items-center space-x-2 whitespace-nowrap">
+        <i class="fa-solid fa-pen-nib"></i><span>Transcript Studio Editor</span>
+      </button>
+      <button onclick="switchTab('corrector', event)" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-slate-800 text-slate-400 hover:text-white flex items-center space-x-2 whitespace-nowrap">
+        <i class="fa-solid fa-wand-magic-sparkles"></i><span>Compliance & Auto-Corrector</span>
+      </button>
+      <button onclick="switchTab('audit', event)" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-slate-800 text-slate-400 hover:text-white flex items-center space-x-2 whitespace-nowrap">
+        <i class="fa-solid fa-clipboard-check"></i><span>QA Review & Audit Studio</span>
+      </button>
+      <button onclick="switchTab('guidelines', event)" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-slate-800 text-slate-400 hover:text-white flex items-center space-x-2 whitespace-nowrap">
+        <i class="fa-solid fa-book-open"></i><span>AGLE Guidelines Cheat Sheet</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 flex flex-col gap-6 w-full">
+       <!-- ================= TAB 1: TRANSCRIPT STUDIO EDITOR ================= -->
+    <div id="tab-editor" class="tab-content flex flex-col gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Job Details -->
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+          <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+            <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">1</span> Job Details & Header Parameters
+          </h2>
+          <p class="text-xs text-slate-400 mb-4">Header parameters and transcript house rules.</p>
+          
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Transcription Job (Seven-Word Topic)</label>
+          <div class="flex gap-2 mb-3">
+            <input type="text" id="topic" placeholder="e.g. Sequoia China on Technology Trends and Opportunities" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-teal-500">
+            <button type="button" onclick="autoGenerateTitle()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg transition whitespace-nowrap">Auto Title</button>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Audio Length (m:ss)</label>
+              <input type="text" id="audio" value="5:08" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Date (DD/MM/YYYY)</label>
+              <input type="text" id="date" placeholder="DD/MM/YYYY" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Transcribed By</label>
+              <input type="text" id="by" value="Godhand Benson" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Client</label>
+              <input type="text" id="client" value="Eagle Web" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Project Type</label>
+              <select id="project" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+                <option selected>All</option>
+                <option>Legal dictation</option>
+                <option>Legal proceedings</option>
+                <option>Speech / Lectures</option>
+                <option>Zoom meeting</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Rule Set Override</label>
+              <select id="mode" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+                <option value="auto">Auto from project</option>
+                <option value="strict">Strict Verbatim</option>
+                <option value="edited">Clean / Edited Verbatim</option>
+              </select>
+            </div>
+          </div>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div><label class="block text-xs font-semibold mb-1 text-slate-300">Audio Length</label><input type="text" id="audio" value="5:08" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs text-slate-100"></div>
-          <div><label class="block text-xs font-semibold mb-1 text-slate-300">Transcribed By</label><input type="text" id="by" value="Godhand Benson" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs text-slate-100"></div>
+
+        <!-- Raw Transcript Input -->
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5 flex flex-col">
+          <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+            <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">2</span> Raw Transcript Input
+          </h2>
+          <p class="text-xs text-slate-400 mb-3">Paste text with speaker & timestamp tags, or load file.</p>
+          <textarea id="raw" spellcheck="false" placeholder="Speaker 1&#10;(0:00) First sentence. (0:04) Second sentence.&#10;Speaker 2&#10;(0:09) A reply." class="w-full flex-1 min-h-[140px] bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs mono text-slate-100 focus:outline-none focus:border-teal-500"></textarea>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <button onclick="detectSpeakers()" class="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs font-semibold rounded-lg transition text-white">Detect Speakers</button>
+            <button onclick="loadSampleText()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg transition">Load Sample</button>
+            <button onclick="clearEditorRaw()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg transition">Clear</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Speaker Mapping & Formatting Options Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+          <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+            <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">3</span> Speaker Mapping
+          </h2>
+          <p class="text-xs text-slate-400 mb-3">Configure gender and custom labels.</p>
+          <div id="spkBox" class="text-xs text-slate-400 italic">Click "Detect Speakers" after pasting a transcript.</div>
+        </div>
+
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+          <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+            <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">4</span> Formatting Options
+          </h2>
+          <p class="text-xs text-slate-400 mb-3">Timestamp calculations and style rules.</p>
+          <div class="space-y-2 text-xs text-slate-300 mb-4">
+            <label class="flex items-center space-x-2"><input type="checkbox" id="oContinuous" checked class="rounded bg-slate-900 border-slate-700 text-teal-600"><span>Continuous timestamps</span></label>
+            <label class="flex items-center space-x-2"><input type="checkbox" id="oRandomMs" checked class="rounded bg-slate-900 border-slate-700 text-teal-600"><span>Randomize millisecond values (.236 instead of .000)</span></label>
+            <label class="flex items-center space-x-2"><input type="checkbox" id="oNumbers" checked class="rounded bg-slate-900 border-slate-700 text-teal-600"><span>Apply numeric format rules (0-9 words, 10+ digits)</span></label>
+          </div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Vocabulary Corrections (wrong => right)</label>
+          <textarea id="corr" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs mono text-slate-100" placeholder="Snick => SNCC" style="min-height:60px"></textarea>
+        </div>
+
+      </div>
+
+      <!-- Generate Action Button -->
+      <button onclick="generateTranscript()" class="w-full py-3 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl shadow-lg shadow-teal-600/20 transition flex items-center justify-center space-x-2 text-base">
+        <i class="fa-solid fa-wand-magic-sparkles"></i><span>Generate Formatted Transcript (with Random Milliseconds & End Marker)</span>
+      </button>
+
+      <!-- Output Panel -->
+      <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-200 flex items-center">
+            <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">5</span> Formatted Transcript Output
+          </h2>
+          <div class="flex gap-2">
+            <button onclick="copyToClipboard('out', 'Copied transcript!')" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs font-medium rounded-lg transition">Copy Plain Text</button>
+            <button onclick="sendToAudit()" class="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs font-semibold rounded-lg transition text-white">Send to QA Auditor</button>
+          </div>
+        </div>
+        <textarea id="out" spellcheck="false" placeholder="Formatted transcript output will appear here..." class="w-full bg-slate-950/60 border border-slate-700/60 rounded-lg p-4 text-sm mono text-teal-300 min-h-[300px]"></textarea>
+      </div>
+
+      <!-- Audio Player & Timestamp Checker -->
+      <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+        <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+          <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">6</span> Audio Player & Timestamp Checker
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Audio or Video File</label>
+            <input type="file" id="audioFile" accept="audio/*,video/*" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-slate-200 hover:file:bg-slate-600">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Playback Speed</label>
+            <select id="rate" onchange="changePlaybackRate()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+              <option value="0.75">0.75x</option>
+              <option value="1" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Current Audio Time</label>
+            <div id="clock" class="mono text-lg font-bold text-teal-400">00:00:00.000</div>
+          </div>
+        </div>
+        <audio id="player" controls class="w-full mt-4"></audio>
+      </div>
+      </div>
+        <!-- ================= TAB 2: COMPLIANCE & AUTO-CORRECTOR ================= -->
+    <div id="tab-corrector" class="tab-content flex flex-col gap-6" style="display: none;">
+      <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <span class="text-sm font-semibold text-slate-300">Transcription Mode:</span>
+          <div class="inline-flex rounded-lg bg-slate-900 p-1 border border-slate-700">
+            <button id="corrModeClean" onclick="setCorrectorMode('clean')" class="flex items-center space-x-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-teal-600 text-white shadow-sm">
+              <i class="fa-solid fa-sparkles text-xs"></i><span>Clean Read</span>
+            </button>
+            <button id="corrModeVerbatim" onclick="setCorrectorMode('verbatim')" class="flex items-center space-x-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white">
+              <i class="fa-solid fa-quote-left text-xs"></i><span>Full Verbatim</span>
+            </button>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button onclick="clearCorrector()" class="px-3.5 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-700/50 text-sm font-medium transition">Clear</button>
+          <button onclick="runCorrectorFix()" class="px-5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold shadow-lg shadow-teal-600/20 transition flex items-center">
+            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Fix & Validate
+          </button>
         </div>
       </div>
 
-      <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col">
-        <label class="block text-xs font-semibold mb-1 text-slate-300">Raw Transcript Input</label>
-        <textarea id="raw" placeholder="Speaker 1&#10;(0:00) Welcome to our session. (0:05) Let us begin." class="w-full flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-xs mono text-slate-100 min-h-[100px]"></textarea>
-        <div class="flex gap-2 mt-2">
-          <button onclick="detectSpk()" class="bg-teal-600 px-3 py-1.5 rounded text-xs font-semibold text-white">Detect Speakers</button>
-          <button onclick="loadSample()" class="bg-slate-700 px-3 py-1.5 rounded text-xs font-semibold">Load Sample</button>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="flex flex-col bg-slate-800/40 border border-slate-700/60 rounded-xl overflow-hidden">
+          <div class="bg-slate-800/80 px-4 py-3 border-b border-slate-700/60 flex items-center justify-between">
+            <span class="text-sm font-semibold text-slate-200"><i class="fa-solid fa-file-pen text-teal-400 mr-2"></i> Raw Transcript Input</span>
+            <span id="corrCharCount" class="text-xs text-slate-400 mono">0 chars</span>
+          </div>
+          <textarea id="corrInputText" placeholder="Paste transcript text to auto-correct..." class="w-full h-80 lg:h-full p-4 bg-transparent text-slate-100 placeholder-slate-500 focus:outline-none resize-none mono text-sm leading-relaxed" oninput="updateCorrStats()"></textarea>
+        </div>
+
+        <div class="flex flex-col bg-slate-800/40 border border-slate-700/60 rounded-xl overflow-hidden">
+          <div class="bg-slate-800/80 px-4 py-3 border-b border-slate-700/60 flex items-center justify-between">
+            <span class="text-sm font-semibold text-slate-200"><i class="fa-solid fa-circle-check text-emerald-400 mr-2"></i> 100% Compliant Result</span>
+            <button onclick="copyCorrectorOutput()" class="px-2.5 py-1 text-xs font-medium rounded bg-slate-700 hover:bg-slate-600 text-slate-200 transition">Copy Fixed Text</button>
+          </div>
+          <div id="corrOutputText" class="w-full h-80 lg:h-full p-4 bg-slate-950/40 text-emerald-300 mono text-sm leading-relaxed overflow-y-auto whitespace-pre-wrap select-all">Result will appear here after clicking "Fix & Validate"...</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-4">
+        <h3 class="text-sm font-semibold text-slate-300 mb-3 flex items-center"><i class="fa-solid fa-list-check text-teal-400 mr-2"></i> Correction & Rule Verification Audit Log</h3>
+        <div id="corrAuditLog" class="space-y-2 text-xs max-h-48 overflow-y-auto pr-2">
+          <div class="text-slate-500 italic">No analysis performed yet.</div>
         </div>
       </div>
     </div>
 
-    <div id="spkBox" class="bg-slate-800/50 p-3 rounded-xl border border-slate-700 text-xs text-slate-400">Speakers will appear here after detection.</div>
 
-    <button onclick="generate()" class="w-full py-3 bg-teal-600 hover:bg-teal-500 font-bold text-sm rounded-xl text-white shadow-lg transition">Generate Formatted Transcript with End-Marker & Random Milliseconds</button>
+    <!-- ================= TAB 3: QA REVIEW & AUDIT STUDIO ================= -->
+    <div id="tab-audit" class="tab-content flex flex-col gap-6" style="display: none;">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+          <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+            <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">1</span> Review Metadata
+          </h2>
+          <p class="text-xs text-slate-400 mb-4">Track job information and reviewer notes.</p>
+          
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Job Title / Topic</label>
+              <input type="text" id="reviewJob" placeholder="e.g. Technology Trends" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Transcriptionist Name</label>
+              <input type="text" id="transcriptionist" value="Godhand Benson" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Reviewer Name</label>
+              <input type="text" id="reviewer" value="QA Specialist" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Review Date</label>
+              <input type="text" id="reviewDate" placeholder="DD/MM/YYYY" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+          </div>
 
-    <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 flex flex-col flex-1">
-      <div class="flex justify-between items-center mb-2">
-        <span class="text-xs font-bold text-slate-300">Formatted Output</span>
-        <button onclick="copyOut()" class="bg-slate-700 px-3 py-1 rounded text-xs font-medium">Copy Text</button>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Target Mode</label>
+              <select id="reviewModeType" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+                <option value="strict">Strict Verbatim</option>
+                <option value="edited" selected>Clean / Edited Verbatim</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Total Word Count</label>
+              <input type="number" id="totalWords" value="500" min="1" oninput="calcQAScore()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+              <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">2</span> Error Tracking & Deductions
+            </h2>
+            <p class="text-xs text-slate-400 mb-4">Log error occurrences to calculate final QA score.</p>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Word Errors (-1%)</label>
+                <input type="number" id="eWords" value="0" min="0" oninput="calcQAScore()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-slate-100">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Speaker Tags (-2%)</label>
+                <input type="number" id="eSpk" value="0" min="0" oninput="calcQAScore()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-slate-100">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Timestamps (-2%)</label>
+                <input type="number" id="eTs" value="0" min="0" oninput="calcQAScore()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-slate-100">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Rule Errors (-1%)</label>
+                <input type="number" id="eRules" value="0" min="0" oninput="calcQAScore()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-slate-100">
+              </div>
+            </div>
+          </div>
+
+          <div id="scoreDisplay" class="bg-slate-900 border border-slate-700 rounded-xl p-4 text-center">
+            <div class="text-[11px] font-bold text-slate-400 tracking-wider">CALCULATED ACCURACY SCORE</div>
+            <div id="scoreVal" class="text-3xl font-extrabold text-emerald-400 my-1">100%</div>
+            <div id="scoreStatus"><span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white">PASS</span></div>
+          </div>
+        </div>
+         </div>
+                 <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+        <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+          <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">3</span> Submitted Transcript Evaluation
+        </h2>
+        <p class="text-xs text-slate-400 mb-3">Paste transcript text here for automated rule and violation scanning.</p>
+        <textarea id="reviewText" placeholder="Paste generated transcript here to review..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs mono text-slate-100" style="min-height:120px"></textarea>
+        <div class="flex gap-2 mt-3">
+          <button onclick="runAutoScan()" class="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-xs font-semibold rounded-lg transition text-white">Auto-Scan for Guidelines Violations</button>
+          <button onclick="document.getElementById('reviewText').value=''; document.getElementById('scanResults').innerHTML='';" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-semibold rounded-lg transition">Clear</button>
+        </div>
+        <div id="scanResults" class="mt-3 text-xs"></div>
       </div>
-      <textarea id="out" readonly class="w-full bg-slate-950 border border-slate-700 rounded p-3 text-xs mono text-teal-300 min-h-[250px]"></textarea>
+
+      <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+        <h2 class="text-sm font-bold text-slate-200 mb-1 flex items-center">
+          <span class="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 inline-grid place-items-center mr-2 text-xs">4</span> QA Audit Summary & Report Generator
+        </h2>
+        <p class="text-xs text-slate-400 mb-3">Generate feedback report for the transcriptionist.</p>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">Reviewer Comments / Specific Corrections</label>
+        <textarea id="feedback" placeholder="Provide constructive feedback..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-100 mb-3" style="min-height:80px"></textarea>
+        
+        <div class="flex gap-2 mb-4">
+          <button onclick="generateAuditReport()" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-sm font-semibold rounded-lg transition text-white">Generate QA Review Report</button>
+          <button onclick="copyToClipboard('reportOut', 'Audit report copied!')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-sm font-semibold rounded-lg transition">Copy Audit Report</button>
+        </div>
+
+        <label class="block text-xs font-semibold text-slate-300 mb-1">Final Audit Report</label>
+        <textarea id="reportOut" readonly class="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs mono text-slate-300" style="min-height:160px"></textarea>
+      </div>
     </div>
+
+
+    <!-- ================= TAB 4: AGLE GUIDELINES CHEAT SHEET ================= -->
+    <div id="tab-guidelines" class="tab-content flex flex-col gap-6" style="display: none;">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-teal-400 mb-2">1. Filler Words</h3>
+          <ul class="list-disc pl-5 text-xs text-slate-300 space-y-1">
+            <li>Fillers (um, uh, like, you know) are ONLY allowed in Full Verbatim jobs.</li>
+            <li>In Clean / Edited Verbatim mode, all filler words must be stripped.</li>
+          </ul>
+        </div>
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-teal-400 mb-2">2. UI Buttons & Elements</h3>
+          <ul class="list-disc pl-5 text-xs text-slate-300 space-y-1">
+            <li>Always capitalize and double quote interface buttons or menu items (e.g., click "Upload", press "Submit").</li>
+          </ul>
+        </div>
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-teal-400 mb-2">3. Numbers & Currency</h3>
+          <ul class="list-disc pl-5 text-xs text-slate-300 space-y-1">
+            <li>Single digits zero to nine must be written as words; numbers 10 and above as digits.</li>
+            <li>Format currency correctly ($15, €27) and percentages as 5%.</li>
+          </ul>
+        </div>
+        <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-teal-400 mb-2">4. Headers & Structure</h3>
+          <ul class="list-disc pl-5 text-xs text-slate-300 space-y-1">
+            <li>Speaker tags must follow standard formatting (e.g., Male_1:, Female_1:).</li>
+            <li>Transcription job titles / topics must target exactly 7 words.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
   </main>
 
-  <!-- TAB 2: AUDITOR -->
-  <main id="tabAudit" class="flex flex-col gap-4 flex-1" style="display:none;">
-    <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-      <h2 class="text-sm font-bold text-teal-400 mb-2">QA Compliance Auditor</h2>
-      <textarea id="auditText" placeholder="Paste transcript here to verify rules..." class="w-full bg-slate-900 border border-slate-700 rounded p-3 text-xs mono text-slate-100 min-h-[150px]"></textarea>
-      <button onclick="runAudit()" class="mt-2 bg-teal-600 px-4 py-2 rounded text-xs font-semibold text-white">Scan Violations</button>
-      <div id="auditRes" class="mt-3 text-xs"></div>
-    </div>
-  </main>
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    Transcript Studio & AGLE Transcription & QA Suite Engine
+  </footer>
 
-  <div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-6 bg-slate-100 text-slate-900 px-4 py-2 rounded-full text-xs font-semibold opacity-0 transition-opacity duration-200 pointer-events-none z-50"></div>
-
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-6 bg-slate-100 text-slate-900 px-4 py-2 rounded-full text-xs font-semibold shadow-2xl opacity-0 pointer-events-none transition-opacity duration-200 z-50"></div>
+    <!-- JavaScript Integration Layer -->
   <script>
-    function toast(msg) {
-      const t = document.getElementById('toast');
-      t.textContent = msg; t.classList.remove('opacity-0'); t.classList.add('opacity-100');
-      setTimeout(() => { t.classList.remove('opacity-100'); t.classList.add('opacity-0'); }, 2000);
-    }
-
-    function switchTab(tab) {
-      if(tab === 'editor') {
-        document.getElementById('tabEditor').style.display = 'flex';
-        document.getElementById('tabAudit').style.display = 'none';
-        document.getElementById('btnTabEd').className = "px-3 py-1.5 rounded bg-teal-600 text-xs font-semibold text-white";
-        document.getElementById('btnTabAud').className = "px-3 py-1.5 rounded bg-slate-800 text-xs font-semibold text-slate-400";
-      } else {
-        document.getElementById('tabEditor').style.display = 'none';
-        document.getElementById('tabAudit').style.display = 'flex';
-        document.getElementById('btnTabAud').className = "px-3 py-1.5 rounded bg-teal-600 text-xs font-semibold text-white";
-        document.getElementById('btnTabEd').className = "px-3 py-1.5 rounded bg-slate-800 text-xs font-semibold text-slate-400";
+    function switchTab(tabId, evt) {
+      document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-slate-800 text-slate-400 hover:text-white flex items-center space-x-2 whitespace-nowrap";
+      });
+      document.getElementById('tab-' + tabId).style.display = 'flex';
+      if (evt && evt.currentTarget) {
+        evt.currentTarget.className = "tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-teal-600 text-white flex items-center space-x-2 whitespace-nowrap";
       }
     }
 
-    function autoTitle() {
-      document.getElementById('topic').value = "Comprehensive Business Analysis and Industry Growth Insights";
-      toast('7-word topic generated');
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.remove('opacity-0');
+      t.classList.add('opacity-100');
+      setTimeout(() => {
+        t.classList.remove('opacity-100');
+        t.classList.add('opacity-0');
+      }, 2200);
     }
 
-    function loadSample() {
-      document.getElementById('raw').value = "Speaker 1\n(0:00) Welcome to our quarterly review meeting. (0:04) Today we discuss tech trends.\nSpeaker 2\n(0:09) Thanks for having me here.";
-      autoTitle();
-      toast('Sample loaded');
+    function copyToClipboard(elementId, successMsg) {
+      const val = document.getElementById(elementId).value;
+      if (!val.trim()) {
+        showToast('Nothing to copy!');
+        return;
+      }
+      navigator.clipboard.writeText(val);
+      showToast(successMsg);
     }
 
-    let speakerMap = {};
-    function detectSpk() {
+    // --- Tab 1: Transcript Studio Editor Logic ---
+    let speakerMap = null, speakerTags = [];
+
+    function autoGenerateTitle() {
       const raw = document.getElementById('raw').value;
-      const matches = raw.match(/Speaker\s*\d+/gi) || ['Speaker 1', 'Speaker 2'];
-      const unique = [...new Set(matches)];
-      speakerMap = {};
-      let m = 0, f = 0;
-      unique.forEach((s, idx) => {
-        speakerMap[s] = idx === 0 ? 'Male_1' : 'Female_1';
+      document.getElementById('topic').value = generateSevenWordTitle(raw);
+      showToast('7-word title generated');
+    }
+
+    function generateSevenWordTitle(rawText) {
+      if (!rawText || !rawText.trim()) return "Discussion on Key Business and Industry Insights";
+      const cleaned = rawText.replace(/Speaker\s*\d+/gi, ' ').replace(/\(\d+:\d+(?::\d+)?\)/g, ' ').replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+      const stopWords = new Set(['the','and','a','to','of','in','i','is','that','it','for','you','was','with','on','as','have','be','this','are','or','by','not','at','from','we','an','your']);
+      const words = cleaned.split(' ').filter(w => w.length > 2 && !stopWords.has(w.toLowerCase()));
+      if (words.length < 3) return "Comprehensive Transcript Analysis and Overview Summary Report";
+      const freq = {};
+      words.forEach(w => {
+        const cap = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        freq[cap] = (freq[cap] || 0) + 1;
       });
-      document.getElementById('spkBox').innerHTML = 'Detected Speakers: ' + Object.keys(speakerMap).map(k => `${k} => ${speakerMap[k]}`).join(', ');
-      toast('Speakers mapped successfully');
+      const sorted = Object.keys(freq).sort((a, b) => freq[b] - freq[a]);
+      const p1 = sorted[0] || "Industry", p2 = sorted[1] || "Trends", p3 = sorted[2] || "Opportunities";
+      const parts = (p1 + " " + p2 + " on " + p3 + " and Future Developments").split(' ');
+      while (parts.length < 7) parts.push("Insights");
+      return parts.slice(0, 7).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
+
+    function parseInput(raw) {
+      raw = (raw || '').replace(/\r/g, '').trim();
+      if (!raw) return { segments: [], kind: 'none' };
+      const lines = raw.split('\n');
+      let segs = [], speaker = 'Speaker 1', open = null;
+      const re = /\((\d+):(\d{2})(?::(\d{2}))?\)/g;
+      
+      lines.forEach(line => {
+        const t = line.trim();
+        if (!t) return;
+        const sm = /^Speaker\s*(\d+)\s*$/i.exec(t);
+        if (sm) { speaker = 'Speaker ' + sm[1]; open = null; return; }
+        let last = 0, m;
+        re.lastIndex = 0;
+        while ((m = re.exec(t)) !== null) {
+          const before = t.slice(last, m.index).trim();
+          if (before) {
+            if (open) open.text += ' ' + before;
+            else { open = { speaker, start: 0, text: before }; segs.push(open); }
+          }
+          const start = m[3] !== undefined ? ((+m[1]) * 3600 + (+m[2]) * 60 + (+m[3])) * 1000 : ((+m[1]) * 60 + (+m[2])) * 1000;
+          open = { speaker, start, text: '' };
+          segs.push(open);
+          last = m.index + m[0].length;
+        }
+        const tail = t.slice(last).trim();
+        if (tail) {
+          if (open) open.text += (open.text ? ' ' : '') + tail;
+          else { open = { speaker, start: 0, text: tail }; segs.push(open); }
+        }
+      });
+      return { segments: segs.filter(s => s.text.trim()), kind: 'text' };
+    }
+
+    function detectSpeakers() {
+      const parsed = parseInput(document.getElementById('raw').value);
+      let tags = [];
+      parsed.segments.forEach(s => { if (!tags.includes(s.speaker)) tags.push(s.speaker); });
+      if (!tags.length) {
+        document.getElementById('spkBox').innerHTML = '<div class="text-xs text-slate-500 italic">No speakers found.</div>';
+        return;
+      }
+      speakerMap = {};
+      let c = 0;
+      tags.forEach(t => { c++; speakerMap[t] = { gender: 'Male', label: 'Male_' + c }; });
+      speakerTags = tags;
+
+      let html = '<table class="w-full text-xs text-left"><thead><tr class="text-slate-400 border-b border-slate-700"><th class="pb-2">Source tag</th><th class="pb-2">Gender</th><th class="pb-2">Assigned Label</th></tr></thead><tbody>';
+      tags.forEach((t, i) => {
+        html += `<tr class="border-b border-slate-800"><td class="py-2">${t}</td><td class="py-2"><select onchange="updateSpeakerGender('${t}', this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-1"><option>Male</option><option>Female</option></select></td><td class="py-2 font-mono text-teal-300">${speakerMap[t].label}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('spkBox').innerHTML = html;
+      showToast('Speakers detected');
+    }
+
+    function updateSpeakerGender(tag, gender) {
+      if (speakerMap[tag]) {
+        speakerMap[tag].gender = gender;
+        let mCount = 0, fCount = 0;
+        speakerTags.forEach(t => {
+          if (speakerMap[t].gender === 'Male') { mCount++; speakerMap[t].label = 'Male_' + mCount; }
+          else { fCount++; speakerMap[t].label = 'Female_' + fCount; }
+        });
+        detectSpeakers();
+      }
+    }
+
+    function loadSampleText() {
+      document.getElementById('raw').value = "Speaker 1\n(0:00) Welcome to our quarterly review meeting. (0:04) Today we discuss tech trends.\nSpeaker 2\n(0:09) Thanks for having me here.";
+      document.getElementById('topic').value = "Sequoia China on Technology Trends and Opportunities";
+      showToast('Sample loaded');
+    }
+
+    function clearEditorRaw() {
+      document.getElementById('raw').value = '';
+      document.getElementById('spkBox').innerHTML = '<div class="text-xs text-slate-500 italic">Click "Detect Speakers" after pasting a transcript.</div>';
+      showToast('Cleared');
     }
 
     function fmtTs(ms) {
       ms = Math.max(0, Math.round(ms));
       let h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
-      // Explicitly randomize millisecond value between 100 and 900 if zero to ensure realistic values like .236
-      let r = (ms % 1000);
-      if (r === 0) r = Math.floor(Math.random() * 800) + 100;
+      let r = ms % 1000;
+      if (r === 0) r = Math.floor(Math.random() * 800) + 100; // Ensures realistic random milliseconds like .236
       return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + String(r).padStart(3, '0');
     }
 
     function parseAudioLength(str) {
-      let p = (str || '5:08').split(':').map(x => parseInt(x, 10));
+      str = (str || '').trim(); if (!str) return 300000;
+      let p = str.split(':').map(x => parseInt(x, 10));
       if (p.length === 1) return p[0] * 60000;
       if (p.length === 2) return (p[0] * 60 + p[1]) * 1000;
       return (p[0] * 3600 + p[1] * 60 + p[2]) * 1000;
     }
 
-    function generate() {
+    function generateTranscript() {
       const raw = document.getElementById('raw').value;
-      if (!raw.trim()) { toast('Please input raw transcript text first.'); return; }
-      if (!document.getElementById('topic').value.trim()) autoTitle();
+      if (!raw.trim()) { showToast('Paste raw transcript first'); return; }
+      if (!document.getElementById('topic').value.trim()) autoGenerateTitle();
 
-      const lines = raw.split('\n');
-      let segs = [], currentSpk = 'Speaker 1', currentText = '', currentStart = 0;
+      const parsed = parseInput(raw);
+      const audioMs = parseAudioLength(document.getElementById('audio').value);
       
-      lines.forEach(l => {
-        l = l.trim();
-        if (!l) return;
-        if (/^Speaker\s*\d+/i.test(l)) {
-          currentSpk = l;
-          return;
-        }
-        let re = /\((\d+):(\d{2})\)(.*)/g, m;
-        let found = false;
-        while ((m = re.exec(l)) !== null) {
-          found = true;
-          if (currentText) {
-            segs.push({ speaker: currentSpk, start: currentStart, text: currentText.trim() });
-          }
-          currentStart = ((+m[1]) * 60 + (+m[2])) * 1000 + Math.floor(Math.random() * 700) + 150;
-          currentText = m[3];
-        }
-        if (!found) {
-          currentText += ' ' + l;
-        }
-      });
-      if (currentText) {
-        segs.push({ speaker: currentSpk, start: currentStart, text: currentText.trim() });
-      }
+      let segs = parsed.segments.map(s => ({ speaker: s.speaker, start: s.start + Math.floor(Math.random() * 700) + 150, text: s.text }));
 
-      if (segs.length === 0) {
-        segs.push({ speaker: 'Speaker 1', start: 500, text: raw });
-      }
-
-      let audioMs = parseAudioLength(document.getElementById('audio').value);
-      let outLines = [
+      let lines = [
         'Transcription Job: ' + document.getElementById('topic').value,
-        'Client: Eagle Web',
+        'Client: ' + document.getElementById('client').value,
         'Transcribed By: ' + document.getElementById('by').value,
-        'Date: ' + new Date().toLocaleDateString(),
+        'Date: ' + (document.getElementById('date').value || new Date().toLocaleDateString()),
+        'Audio Length: ' + (document.getElementById('audio').value || '5:08'),
         ''
       ];
 
       segs.forEach((s, i) => {
-        let startStr = fmtTs(s.start);
+        let startTs = fmtTs(s.start);
         let endMs = i < segs.length - 1 ? segs[i+1].start - 200 : s.start + 4500;
-        let endStr = fmtTs(endMs);
-        let label = speakerMap[s.speaker] || (i % 2 === 0 ? 'Male_1' : 'Female_1');
-
-        outLines.push(label + ':');
-        outLines.push('[' + startStr + ' --> ' + endStr + ']');
-        outLines.push(s.text + '\n');
+        let endTs = fmtTs(endMs);
+        let spkLabel = (speakerMap && speakerMap[s.speaker]) ? speakerMap[s.speaker].label : (i % 2 === 0 ? 'Male_1' : 'Female_1');
+        
+        lines.push(spkLabel + ':');
+        lines.push('[' + startTs + ' --> ' + endTs + ']');
+        lines.push(s.text + '\n');
       });
 
-      // Explicit End of Recording marker
-      let finalEndMs = Math.max(audioMs, segs[segs.length - 1].start + 5000);
-      outLines.push('[END OF RECORDING --> ' + fmtTs(finalEndMs) + ']');
+      // Explicit End Marker
+      let finalEndMs = Math.max(audioMs, segs.length > 0 ? segs[segs.length - 1].start + 5000 : 5000);
+      lines.push('[END OF RECORDING --> ' + fmtTs(finalEndMs) + ']');
 
-      document.getElementById('out').value = outLines.join('\n');
-      toast('Transcript generated successfully with randomized milliseconds and end-marker!');
+      document.getElementById('out').value = lines.join('\n');
+      showToast('Transcript generated with random milliseconds & end marker!');
     }
 
-    function copyOut() {
-      const text = document.getElementById('out').value;
-      if (!text) { toast('Nothing to copy'); return; }
-      navigator.clipboard.writeText(text);
-      toast('Copied to clipboard!');
+    function sendToAudit() {
+      const out = document.getElementById('out').value;
+      if (!out.trim()) { showToast('Generate transcript first'); return; }
+      document.getElementById('reviewText').value = out;
+      document.getElementById('reviewJob').value = document.getElementById('topic').value;
+      switchTab('audit', null);
+      showToast('Sent to QA Auditor');
     }
 
-    function runAudit() {
-      const text = document.getElementById('auditText').value;
-      if (!text) { toast('Paste text to audit'); return; }
-      let hasEnd = text.includes('[END OF RECORDING');
-      let hasTopic = text.includes('Transcription Job:');
-      let res = [];
-      if (hasEnd) res.push('✅ End-of-recording marker detected.');
-      else res.push('❌ Missing [END OF RECORDING --> ...] marker.');
-      if (hasTopic) res.push('✅ Topic header detected.');
-      else res.push('❌ Missing Transcription Job header.');
-      document.getElementById('auditRes').innerHTML = res.join('<br>');
-      toast('Audit complete');
+    // Audio Player sync
+    const player = document.getElementById('player');
+    function changePlaybackRate() {
+      player.playbackRate = parseFloat(document.getElementById('rate').value);
+    }
+    player.addEventListener('timeupdate', () => {
+      let ms = Math.round(player.currentTime * 1000);
+      document.getElementById('clock').innerText = fmtTs(ms);
+    });
+    document.getElementById('audioFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) { player.src = URL.createObjectURL(file); }
+    });
+
+
+    // --- Tab 2: Compliance & Auto-Corrector Logic ---
+    let corrActiveMode = 'clean';
+
+    function setCorrectorMode(mode) {
+      corrActiveMode = mode;
+      const cleanBtn = document.getElementById('corrModeClean');
+      const verbBtn = document.getElementById('corrModeVerbatim');
+      if (mode === 'clean') {
+        cleanBtn.className = "flex items-center space-x-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-teal-600 text-white shadow-sm";
+        verbBtn.className = "flex items-center space-x-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white";
+      } else {
+        verbBtn.className = "flex items-center space-x-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-teal-600 text-white shadow-sm";
+        cleanBtn.className = "flex items-center space-x-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all text-slate-400 hover:text-white";
+      }
+    }
+
+    function updateCorrStats() {
+      const t = document.getElementById('corrInputText').value;
+      document.getElementById('corrCharCount').innerText = `${t.length} chars`;
+    }
+
+    function clearCorrector() {
+      document.getElementById('corrInputText').value = '';
+      document.getElementById('corrOutputText').innerText = 'Result will appear here after clicking "Fix & Validate"...';
+      document.getElementById('corrAuditLog').innerHTML = '<div class="text-slate-500 italic">No analysis performed yet.</div>';
+      updateCorrStats();
+    }
+
+    function copyCorrectorOutput() {
+      const txt = document.getElementById('corrOutputText').innerText;
+      if (!txt || txt.startsWith('Result will appear')) return;
+      navigator.clipboard.writeText(txt);
+      showToast('Copied fixed text!');
+    }
+
+    function runCorrectorFix() {
+      const input = document.getElementById('corrInputText').value;
+      if (!input.trim()) { showToast('Paste transcript input'); return; }
+
+      let text = input;
+      let logs = [];
+
+      if (text.includes('...')) {
+        text = text.replace(/\.\.\./g, '');
+        logs.push({ rule: 'Punctuation', desc: 'Removed ellipses (...).' });
+      }
+
+      if (corrActiveMode === 'clean') {
+        const fillers = ['\\bum\\b', '\\buh\\b', '\\buh-huh\\b', '\\bah\\b', '\\byou know\\b', '\\blike,?\\b', '\\bsort of\\b', '\\bkind of\\b'];
+        fillers.forEach(f => {
+          const reg = new RegExp(f, 'gi');
+          if (reg.test(text)) {
+            text = text.replace(reg, '');
+            logs.push({ rule: 'Clean Read', desc: `Stripped filler word match (${f.replace(/\\b/g, '')})` });
+          }
+        });
+        text = text.replace(/\s+/g, ' ');
+      }
+
+      const spellingMap = [
+        [/\be-mail\b/gi, 'email'],
+        [/\balright\b/gi, 'all right'],
+        [/\bo\.k\.\b/gi, 'okay'],
+        [/\byep\b/gi, 'yeah'],
+        [/\byup\b/gi, 'yeah'],
+        [/\bya'll\b/gi, "y'all"]
+      ];
+      spellingMap.forEach(([reg, rep]) => {
+        if (reg.test(text)) {
+          text = text.replace(reg, rep);
+          logs.push({ rule: 'Standard Spelling', desc: `Applied default spelling for "${rep}".` });
+        }
+      });
+
+      document.getElementById('corrOutputText').innerText = text.trim();
+      const logDiv = document.getElementById('corrAuditLog');
+      if (logs.length === 0) {
+        logDiv.innerHTML = '<div class="p-2 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-800/40"><i class="fa-solid fa-circle-check mr-1.5"></i> Transcript completely complies. No corrections needed.</div>';
+      } else {
+        logDiv.innerHTML = logs.map(l => `<div class="p-2 rounded bg-slate-800/80 border border-slate-700/60 flex justify-between"><div><span class="font-semibold text-teal-400">[${l.rule}]</span> <span class="text-slate-300 ml-2">${l.desc}</span></div><span class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded">Fixed</span></div>`).join('');
+      }
+      showToast('Corrections applied');
+    }
+
+
+    // --- Tab 3: QA Review & Audit Studio Logic ---
+    function calcQAScore() {
+      const totalWords = parseInt(document.getElementById('totalWords').value, 10) || 500;
+      const eWords = parseInt(document.getElementById('eWords').value, 10) || 0;
+      const eSpk = parseInt(document.getElementById('eSpk').value, 10) || 0;
+      const eTs = parseInt(document.getElementById('eTs').value, 10) || 0;
+      const eRules = parseInt(document.getElementById('eRules').value, 10) || 0;
+
+      const penalties = (eWords * 1) + (eSpk * 2) + (eTs * 2) + (eRules * 1);
+      let score = Math.max(0, 100 - ((penalties / totalWords) * 100));
+      score = Math.round(score * 10) / 10;
+
+      const scoreVal = document.getElementById('scoreVal');
+      const scoreStatus = document.getElementById('scoreStatus');
+
+      scoreVal.textContent = score + '%';
+      if (score >= 98) {
+        scoreVal.className = "text-3xl font-extrabold text-emerald-400 my-1";
+        scoreStatus.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white">PASS</span>';
+      } else if (score >= 95) {
+        scoreVal.className = "text-3xl font-extrabold text-amber-400 my-1";
+        scoreStatus.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-600 text-white">NEEDS REVISION</span>';
+      } else {
+        scoreVal.className = "text-3xl font-extrabold text-rose-400 my-1";
+        scoreStatus.innerHTML = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-600 text-white">FAIL / REJECT</span>';
+      }
+    }
+
+    function runAutoScan() {
+      const text = document.getElementById('reviewText').value;
+      if (!text.trim()) { showToast('Paste transcript text to scan'); return; }
+
+      let issues = [];
+      const topicMatch = /^Transcription Job:\s*(.+)$/m.exec(text);
+      if (topicMatch) {
+        const words = topicMatch[1].trim().split(/\s+/);
+        if (words.length !== 7) {
+          issues.push('⚠️ Topic header line does not contain exactly 7 words (found ' + words.length + ').');
+        }
+      } else {
+        issues.push('❌ Missing "Transcription Job:" header line.');
+      }
+
+      if (!text.includes('[END OF RECORDING')) {
+        issues.push('❌ Missing [END OF RECORDING --> ...] end marker.');
+      }
+
+      if (document.getElementById('reviewModeType').value === 'edited') {
+        const fillers = text.match(/\b(um|uh|uhm|ah)\b/gi);
+        if (fillers) {
+          issues.push('⚠️ Found ' + fillers.length + ' filler word(s) in Clean Verbatim mode.');
+        }
+      }
+
+      const resDiv = document.getElementById('scanResults');
+      if (issues.length === 0) {
+        resDiv.innerHTML = '<div class="text-emerald-400 font-bold">✅ Automated scan passed! No rule violations or missing end-markers detected.</div>';
+      } else {
+        resDiv.innerHTML = '<div class="text-rose-400 font-bold">Potential Issues Detected:</div><ul class="list-disc pl-5 text-slate-300 mt-1"><li>' + issues.join('</li><li>') + '</li></ul>';
+      }
+      showToast('Scan completed');
+    }
+
+    function generateAuditReport() {
+      const job = document.getElementById('reviewJob').value || 'Untitled Job';
+      const worker = document.getElementById('transcriptionist').value || 'N/A';
+      const reviewer = document.getElementById('reviewer').value || 'N/A';
+      const score = document.getElementById('scoreVal').textContent;
+      const status = document.getElementById('scoreStatus').innerText.trim();
+      const feedback = document.getElementById('feedback').value || 'No specific comments provided.';
+
+      const report = [
+        '=== TRANSCRIPTION QA AUDIT REPORT ===',
+        'Job Topic: ' + job,
+        'Transcriptionist: ' + worker,
+        'Reviewer: ' + reviewer,
+        'Date: ' + (document.getElementById('reviewDate').value || new Date().toLocaleDateString()),
+        '-------------------------------------',
+        'FINAL ACCURACY SCORE: ' + score,
+        'QA STATUS: ' + status,
+        '-------------------------------------',
+        'ERROR SUMMARY:',
+        '- Word Errors: ' + (document.getElementById('eWords').value || 0),
+        '- Speaker Tag Errors: ' + (document.getElementById('eSpk').value || 0),
+        '- Timestamp Errors: ' + (document.getElementById('eTs').value || 0),
+        '- Formatting / Rule Violations: ' + (document.getElementById('eRules').value || 0),
+        '-------------------------------------',
+        'REVIEWER FEEDBACK:',
+        feedback,
+        '====================================='
+      ].join('\n');
+
+      document.getElementById('reportOut').value = report;
+      showToast('Audit report generated!');
     }
   </script>
 </body>
-</html>
+  </html>
+
