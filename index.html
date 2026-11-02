@@ -116,6 +116,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
       <p class="sub">Paste text with speaker & timestamp tags, or upload an SRT/TXT file.</p>
       <textarea id="raw" spellcheck="false" placeholder="Speaker 1&#10;(0:00) First sentence. (0:04) Second sentence.&#10;Speaker 2&#10;(0:09) A reply."></textarea>
       <div class="btns">
+        <button type="button" id="btnScanSpeakers" class="primary">Scan speakers from input</button>
         <button type="button" id="btnSample">Load sample</button>
         <label class="btn-file" style="margin:0"><input type="file" id="file" accept=".txt,.srt,text/plain" hidden><button type="button" id="btnFile">Open file</button></label>
         <button type="button" id="btnClear">Clear</button>
@@ -124,13 +125,9 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
     </section>
 
     <section class="card">
-      <h2><span class="n">3</span>Speaker mapping (Manual)</h2>
-      <p class="sub">Manually add speakers and configure custom labels.</p>
-      <div class="inline-input-btn" style="margin-bottom: 10px;">
-        <input type="text" id="newSpeakerInput" placeholder="Enter speaker name (e.g. Speaker 1)" autocomplete="off">
-        <button type="button" id="btnAddSpeaker" class="primary" style="white-space:nowrap;">Add speaker</button>
-      </div>
-      <div id="spkBox"><div class="hint">No manual speakers added yet. Add them above or they will use input labels.</div></div>
+      <h2><span class="n">3</span>Speaker mapping & remapping</h2>
+      <p class="sub">Map original input speakers (e.g. Speaker 1) to custom output tags (e.g. Male_1).</p>
+      <div id="spkBox"><div class="hint">Click "Scan speakers from input" after pasting text to configure mapping.</div></div>
     </section>
 
     <section class="card">
@@ -382,7 +379,7 @@ function runGrammarQA(transcriptText, mode) {
 if (typeof document !== 'undefined' && document.getElementById) {
 (function() {
   var $ = function(id) { return document.getElementById(id); };
-  var manualSpeakers = [];
+  var speakerMapping = {};
 
   function toast(msg) { 
     var t = $('toast'); 
@@ -390,7 +387,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
     t.classList.add('show'); 
     setTimeout(function() { t.classList.remove('show'); }, 2200); 
   }
-
   $('audioFile').addEventListener('change', function(e) {
     var file = e.target.files[0];
     if (!file) return;
@@ -405,39 +401,45 @@ if (typeof document !== 'undefined' && document.getElementById) {
     };
   });
 
-  function renderSpeakers() {
-    if (!manualSpeakers.length) {
-      $('spkBox').innerHTML = '<div class="hint">No manual speakers added yet. Add them above or they will use input labels.</div>';
+  // Scan speakers from raw input text
+  $('btnScanSpeakers').addEventListener('click', function() {
+    var rawText = $('raw').value;
+    var parsed = parseInput(rawText);
+    var foundTags = [];
+    parsed.segments.forEach(function(s) {
+      if (foundTags.indexOf(s.speaker) < 0) foundTags.push(s.speaker);
+    });
+
+    if (!foundTags.length) {
+      $('spkBox').innerHTML = '<div class="hint">No speakers found in raw input. Paste text with speaker headers first.</div>';
+      toast('No speakers detected');
       return;
     }
-    var html = '<table class="spk"><thead><tr><th>Speaker Label</th><th>Action</th></tr></thead><tbody>';
-    manualSpeakers.forEach(function(spk, idx) {
-      html += '<tr><td><input type="text" value="' + esc(spk) + '" data-idx="' + idx + '" class="manual-spk-input"></td><td><button type="button" class="del-spk" data-idx="' + idx + '">Remove</button></td></tr>';
+
+    speakerMapping = {};
+    foundTags.forEach(function(tag, idx) {
+      // Default auto-suggestion: Speaker 1 -> Male_1, Speaker 2 -> Male_2, etc.
+      var defaultSuggestion = tag.replace(/Speaker\s*(\d+)/i, 'Male_$1');
+      if (defaultSuggestion === tag) defaultSuggestion = 'Male_' + (idx + 1);
+      speakerMapping[tag] = defaultSuggestion;
+    });
+
+    var html = '<table class="spk"><thead><tr><th>Original Speaker Tag</th><th>Remap Output Tag</th></tr></thead><tbody>';
+    foundTags.forEach(function(tag) {
+      html += '<tr><td><strong>' + esc(tag) + '</strong></td><td><input type="text" value="' + esc(speakerMapping[tag]) + '" data-orig="' + esc(tag) + '" class="map-input"></td></tr>';
     });
     html += '</tbody></table>';
     $('spkBox').innerHTML = html;
 
-    document.querySelectorAll('.del-spk').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var idx = parseInt(this.getAttribute('data-idx'), 10);
-        manualSpeakers.splice(idx, 1);
-        renderSpeakers();
-      });
-    });
-    document.querySelectorAll('.manual-spk-input').forEach(function(input) {
+    // Listen to manual changes in remapping inputs
+    document.querySelectorAll('.map-input').forEach(function(input) {
       input.addEventListener('input', function() {
-        var idx = parseInt(this.getAttribute('data-idx'), 10);
-        manualSpeakers[idx] = this.value;
+        var orig = this.getAttribute('data-orig');
+        speakerMapping[orig] = this.value;
       });
     });
-  }
-  $('btnAddSpeaker').addEventListener('click', function() {
-    var val = $('newSpeakerInput').value.trim();
-    if (!val) return;
-    manualSpeakers.push(val);
-    $('newSpeakerInput').value = '';
-    renderSpeakers();
-    toast('Speaker added');
+
+    toast('Speakers scanned and mapped!');
   });
 
   $('btnGenTitle').addEventListener('click', function() { 
@@ -452,10 +454,10 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
   $('btnClear').addEventListener('click', function() {
     $('raw').value = '';
+    $('spkBox').innerHTML = '<div class="hint">Click "Scan speakers from input" after pasting text to configure mapping.</div>';
     toast('Cleared input');
   });
-
-  $('btnCopy').addEventListener('click', function() {
+   $('btnCopy').addEventListener('click', function() {
     var outText = $('out').value;
     if (!outText.trim()) {
       toast('No transcript output to copy');
@@ -468,6 +470,28 @@ if (typeof document !== 'undefined' && document.getElementById) {
       document.execCommand('copy');
       toast('Copied plain text!');
     });
+  });
+
+  // Re-check QA button listener
+  $('btnCheck').addEventListener('click', function() {
+    var outText = $('out').value;
+    if (!outText.trim()) {
+      toast('No transcript to check');
+      return;
+    }
+    var currentMode = modeFor($('project').value, $('mode').value);
+    var qaResult = runGrammarQA(outText, currentMode);
+
+    var qaHtml = '';
+    qaResult.issues.forEach(function(issue) {
+      var icon = issue.level === 'ok' ? '✓' : (issue.level === 'warn' ? '⚠' : '✕');
+      qaHtml += '<li class="' + issue.level + '"><span class="i">' + icon + '</span><span>' + issue.text + '</span></li>';
+    });
+    $('qa').innerHTML = qaHtml;
+
+    $('stats').innerHTML = '<span class="badge">Sentences checked: ' + qaResult.sentenceCount + '</span>' +
+                           '<span class="badge" style="background:' + (qaResult.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + qaResult.errorCount + '</span>';
+    toast('QA re-checked!');
   });
 
   $('btnGo').addEventListener('click', function() {
@@ -488,13 +512,18 @@ if (typeof document !== 'undefined' && document.getElementById) {
     ];
 
     blocks.forEach(function(b) {
-      var speakerLabel = b.speaker;
-      lines.push(speakerLabel + ':\n[' + fmtTs(b.start) + ' --> ' + fmtTs(b.end) + ']\n' + b.text + '\n');
+      // Apply speaker remapping if configured, else fallback to original speaker tag
+      var finalSpeaker = speakerMapping[b.speaker] !== undefined && speakerMapping[b.speaker].trim() !== '' 
+                         ? speakerMapping[b.speaker].trim() 
+                         : b.speaker;
+      
+      lines.push(finalSpeaker + ':\n[' + fmtTs(b.start) + ' --> ' + fmtTs(b.end) + ']\n' + b.text + '\n');
     });
 
     lines.push('[END OF RECORDING --> ' + fmtTs(blocks[blocks.length - 1].end) + ']');
     $('out').value = lines.join('\n');
 
+    // === AUTOMATIC QA VALIDATION TRIGGER ===
     var currentMode = modeFor($('project').value, $('mode').value);
     var qaResult = runGrammarQA($('out').value, currentMode);
 
