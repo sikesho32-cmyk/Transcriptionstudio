@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transcript Studio & AGLE Automation Hub</title>
+<title>Transcript Studio & AGLE Hub</title>
 <style>
 :root {
   --bg: #f5f6f8; --card: #ffffff; --ink: #14181f; --muted: #596273;
@@ -135,7 +135,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
       <p class="sub">Configure timestamp calculations and style engine rules.</p>
       <div class="checks">
         <label><input type="checkbox" id="oContinuous" checked><span>Continuous timestamps</span></label>
-        <label><input type="checkbox" id="oRandomMs" checked><span>Randomize millisecond values (.236 instead of .000)</span></label>
+        <label><input type="checkbox" id="oRandomMs" checked><span>Randomize millisecond values (non-zero 1-9 digits)</span></label>
         <label><input type="checkbox" id="oNumbers" checked><span>Apply numeric format rules (0-9 written, 10+ digits, %, currency)</span></label>
         <label><input type="checkbox" id="oDigits" checked><span>Spell single digits zero to nine</span></label>
         <label><input type="checkbox" id="oEllipsis" checked><span>Auto-insert ellipsis (...)</span></label>
@@ -223,25 +223,38 @@ function modeFor(project, override) {
   return STRICT_PROJECTS.indexOf(project) > -1 ? 'strict' : 'edited';
 }
 function pad(n, w) { return String(n).padStart(w || 2, '0'); }
+
+// Non-zero millisecond generator using digits 1 through 9 exclusively
 function fmtTs(ms) {
   ms = Math.max(0, Math.round(ms));
-  var h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000), r = ms % 1000;
-  return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + pad(r, 3);
+  var h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+  
+  // Generate non-zero 3-digit millisecond value (digits 1-9 only)
+  var r1 = Math.floor(Math.random() * 9) + 1;
+  var r2 = Math.floor(Math.random() * 9) + 1;
+  var r3 = Math.floor(Math.random() * 9) + 1;
+  var nonZeroMs = '' + r1 + r2 + r3;
+
+  return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + nonZeroMs;
 }
+
 function parseAudioLength(str) {
-  str = (str || '').trim(); if (!str) return 0;
+  str = (str || '').replace(/minutes/gi, '').trim(); 
+  if (!str) return 0;
   var p = str.split(':').map(function(x) { return parseInt(x, 10); });
   if (p.some(isNaN)) return 0;
   if (p.length === 1) return p[0] * 60000;
   if (p.length === 2) return (p[0] * 60 + p[1]) * 1000;
   return (p[0] * 3600 + p[1] * 60 + p[2]) * 1000;
 }
+
 function formatDuration(sec) {
   sec = Math.round(sec);
   var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-  if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
-  return m + ':' + pad(s);
+  if (h > 0) return h + ':' + pad(m) + ':' + pad(s) + ' Minutes';
+  return m + ':' + pad(s) + ' Minutes';
 }
+
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function generateSevenWordTitle(rawText) {
@@ -305,10 +318,6 @@ function parseSRT(raw) {
 
 function buildBlocks(parsed, cfg) {
   var segs = parsed.segments.map(function(s) { return { speaker: s.speaker, start: s.start, end: s.end, text: s.text }; });
-  if (parsed.kind === 'text' && cfg.randomMs) {
-    var offset = Math.floor(Math.random() * 800) + 100;
-    for (var j = 0; j < segs.length; j++) { segs[j].start += offset; offset = (offset + Math.floor(Math.random() * 600) + 200) % 1000 || 142; }
-  }
   var audioMs = cfg.audioMs || 0, lastIdx = segs.length - 1;
   segs.forEach(function(s, i) {
     if (parsed.kind === 'text') s.end = i < lastIdx ? segs[i + 1].start : (audioMs > s.start ? audioMs : s.start + 2500);
@@ -317,63 +326,89 @@ function buildBlocks(parsed, cfg) {
   return segs;
 }
 
-function runGrammarQA(transcriptText, mode) {
-  var issues = [];
-  var lines = transcriptText.split('\n');
+// === ITERATIVE 5-PASS QA & AUTO-CORRECTION LOOP ===
+function runIterativeQA(transcriptText, mode) {
+  var currentText = transcriptText;
+  var finalIssues = [];
   var sentenceCount = 0;
   var errorCount = 0;
 
-  lines.forEach(function(line, idx) {
-    var trimmed = line.trim();
-    if (!trimmed || trimmed.includes('Transcription Job:') || trimmed.includes('Client:') || 
-        trimmed.includes('Transcribed By:') || trimmed.includes('Date:') || 
-        trimmed.includes('Audio Length:') || trimmed.startsWith('[') || trimmed.endsWith(']')) {
-      return;
-    }
-    if (trimmed.endsWith(':') && !trimmed.includes('.')) {
-      return;
-    }
+  // Execute 5 passes without fail
+  for (var pass = 1; pass <= 5; pass++) {
+    var issues = [];
+    var lines = currentText.split('\n');
+    sentenceCount = 0;
+    errorCount = 0;
+    var correctedLines = [];
 
-    sentenceCount++;
+    lines.forEach(function(line, idx) {
+      var trimmed = line.trim();
+      if (!trimmed || trimmed.includes('Transcription Job:') || trimmed.includes('Client:') || 
+          trimmed.includes('Transcribed By:') || trimmed.includes('Date:') || 
+          trimmed.includes('Audio Length:') || trimmed.startsWith('[') || trimmed.endsWith(']')) {
+        correctedLines.push(line);
+        return;
+      }
+      if (trimmed.endsWith(':') && !trimmed.includes('.')) {
+        correctedLines.push(line);
+        return;
+      }
 
-    var firstChar = trimmed.charAt(0);
-    if (firstChar && firstChar !== '"' && firstChar !== "'" && firstChar !== firstChar.toUpperCase()) {
-      issues.push({ level: 'bad', text: 'Line ' + (idx + 1) + ': Sentence starts with lowercase letter ("' + trimmed.slice(0, 25) + '...")' });
-      errorCount++;
-    }
+      sentenceCount++;
+      var modifiedLine = line;
 
-    var lastChar = trimmed.slice(-1);
-    if (lastChar && !['.', '?', '!', '"', "'"].includes(lastChar)) {
-      issues.push({ level: 'bad', text: 'Line ' + (idx + 1) + ': Missing terminal punctuation (. ? !) at end of sentence.' });
-      errorCount++;
-    }
-
-    if (line.includes('  ')) {
-      issues.push({ level: 'warn', text: 'Line ' + (idx + 1) + ': Contains double spaces.' });
-    }
-
-    if (mode === 'edited') {
-      var lower = trimmed.toLowerCase();
-      var fillers = ['\\bum\\b', '\\buh\\b', '\\bah\\b', '\\berm\\b', '\\byou know\\b'];
-      fillers.forEach(function(f) {
-        var re = new RegExp(f, 'i');
-        if (re.test(lower)) {
-          issues.push({ level: 'bad', text: 'Line ' + (idx + 1) + ': Clean verbatim mode active, but leftover filler word detected.' });
+      // Pass-based auto-correction for sentence capitalization
+      var firstChar = trimmed.charAt(0);
+      if (firstChar && firstChar !== '"' && firstChar !== "'" && firstChar !== firstChar.toUpperCase()) {
+        if (pass < 5) {
+          // Auto-fix capitalization during iteration loops
+          var lineIdx = modifiedLine.indexOf(trimmed);
+          if (lineIdx >= 0) {
+            modifiedLine = modifiedLine.slice(0, lineIdx) + firstChar.toUpperCase() + trimmed.slice(1);
+          }
+        } else {
+          issues.push({ level: 'bad', text: 'Pass 5: Sentence starts with lowercase letter ("' + trimmed.slice(0, 25) + '...")' });
           errorCount++;
         }
-      });
-    }
+      }
 
-    if (/\b[0-9]\b/.test(trimmed)) {
-      issues.push({ level: 'warn', text: 'Line ' + (idx + 1) + ': Single digit numeral found (0-9 should usually be spelled out).' });
-    }
-  });
+      // Pass-based auto-correction for terminal punctuation
+      var lastChar = trimmed.slice(-1);
+      if (lastChar && !['.', '?', '!', '"', "'"].includes(lastChar)) {
+        if (pass < 5) {
+          // Auto-add period if terminal punctuation is missing
+          modifiedLine = modifiedLine + '.';
+        } else {
+          issues.push({ level: 'bad', text: 'Pass 5: Missing terminal punctuation (. ? !) at end of sentence.' });
+          errorCount++;
+        }
+      }
 
-  if (issues.length === 0) {
-    issues.push({ level: 'ok', text: 'All grammar and punctuation checks passed successfully! Ready for submission.' });
+      if (line.includes('  ')) {
+        modifiedLine = modifiedLine.replace(/\s+/g, ' ');
+      }
+
+      if (mode === 'edited') {
+        var lower = trimmed.toLowerCase();
+        var fillers = ['\\bum\\b', '\\buh\\b', '\\bah\\b', '\\berm\\b', '\\byou know\\b'];
+        fillers.forEach(function(f) {
+          var re = new RegExp(f, 'gi');
+          modifiedLine = modifiedLine.replace(re, '');
+        });
+      }
+
+      correctedLines.push(modifiedLine);
+    });
+
+    currentText = correctedLines.join('\n');
+    finalIssues = issues;
   }
 
-  return { issues: issues, sentenceCount: sentenceCount, errorCount: errorCount };
+  if (finalIssues.length === 0) {
+    finalIssues.push({ level: 'ok', text: '5-Pass QA Loop completed successfully! All grammar and punctuation checks passed.' });
+  }
+
+  return { correctedText: currentText, issues: finalIssues, sentenceCount: sentenceCount, errorCount: errorCount };
 }
 
 if (typeof document !== 'undefined' && document.getElementById) {
@@ -387,6 +422,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
     t.classList.add('show'); 
     setTimeout(function() { t.classList.remove('show'); }, 2200); 
   }
+
   $('audioFile').addEventListener('change', function(e) {
     var file = e.target.files[0];
     if (!file) return;
@@ -401,7 +437,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
     };
   });
 
-  // Scan speakers from raw input text
   $('btnScanSpeakers').addEventListener('click', function() {
     var rawText = $('raw').value;
     var parsed = parseInput(rawText);
@@ -418,7 +453,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
     speakerMapping = {};
     foundTags.forEach(function(tag, idx) {
-      // Default auto-suggestion: Speaker 1 -> Male_1, Speaker 2 -> Male_2, etc.
       var defaultSuggestion = tag.replace(/Speaker\s*(\d+)/i, 'Male_$1');
       if (defaultSuggestion === tag) defaultSuggestion = 'Male_' + (idx + 1);
       speakerMapping[tag] = defaultSuggestion;
@@ -431,7 +465,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
     html += '</tbody></table>';
     $('spkBox').innerHTML = html;
 
-    // Listen to manual changes in remapping inputs
     document.querySelectorAll('.map-input').forEach(function(input) {
       input.addEventListener('input', function() {
         var orig = this.getAttribute('data-orig');
@@ -457,7 +490,8 @@ if (typeof document !== 'undefined' && document.getElementById) {
     $('spkBox').innerHTML = '<div class="hint">Click "Scan speakers from input" after pasting text to configure mapping.</div>';
     toast('Cleared input');
   });
-   $('btnCopy').addEventListener('click', function() {
+
+  $('btnCopy').addEventListener('click', function() {
     var outText = $('out').value;
     if (!outText.trim()) {
       toast('No transcript output to copy');
@@ -472,7 +506,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
     });
   });
 
-  // Re-check QA button listener
   $('btnCheck').addEventListener('click', function() {
     var outText = $('out').value;
     if (!outText.trim()) {
@@ -480,7 +513,8 @@ if (typeof document !== 'undefined' && document.getElementById) {
       return;
     }
     var currentMode = modeFor($('project').value, $('mode').value);
-    var qaResult = runGrammarQA(outText, currentMode);
+    var qaResult = runIterativeQA(outText, currentMode);
+    $('out').value = qaResult.correctedText;
 
     var qaHtml = '';
     qaResult.issues.forEach(function(issue) {
@@ -491,7 +525,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
     $('stats').innerHTML = '<span class="badge">Sentences checked: ' + qaResult.sentenceCount + '</span>' +
                            '<span class="badge" style="background:' + (qaResult.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + qaResult.errorCount + '</span>';
-    toast('QA re-checked!');
+    toast('5-Pass QA loop executed!');
   });
 
   $('btnGo').addEventListener('click', function() {
@@ -499,20 +533,23 @@ if (typeof document !== 'undefined' && document.getElementById) {
     if (!$('topic').value.trim()) $('topic').value = generateSevenWordTitle($('raw').value);
     
     var parsed = parseInput($('raw').value);
-    var cfg = { randomMs: $('oRandomMs').checked, continuous: $('oContinuous').checked, audioMs: parseAudioLength($('audio').value) };
+    var cfg = { continuous: $('oContinuous').checked, audioMs: parseAudioLength($('audio').value) };
     var blocks = buildBlocks(parsed, cfg);
+
+    // Format audio length with "Minutes" suffix if raw value doesn't have it already
+    var rawAudioVal = ($('audio').value || '20:04').trim();
+    if (!/minutes/i.test(rawAudioVal)) rawAudioVal += ' Minutes';
 
     var lines = [
       'Transcription Job: ' + $('topic').value, 
       'Client: ' + $('client').value,
       'Transcribed By: ' + $('by').value, 
       'Date: ' + $('date').value, 
-      'Audio Length: ' + ($('audio').value || '5:08'), 
+      'Audio Length: ' + rawAudioVal, 
       ''
     ];
 
     blocks.forEach(function(b) {
-      // Apply speaker remapping if configured, else fallback to original speaker tag
       var finalSpeaker = speakerMapping[b.speaker] !== undefined && speakerMapping[b.speaker].trim() !== '' 
                          ? speakerMapping[b.speaker].trim() 
                          : b.speaker;
@@ -521,11 +558,12 @@ if (typeof document !== 'undefined' && document.getElementById) {
     });
 
     lines.push('[END OF RECORDING --> ' + fmtTs(blocks[blocks.length - 1].end) + ']');
-    $('out').value = lines.join('\n');
-
-    // === AUTOMATIC QA VALIDATION TRIGGER ===
+    
+    // Run 5-Pass Iterative QA Loop automatically on generation
     var currentMode = modeFor($('project').value, $('mode').value);
-    var qaResult = runGrammarQA($('out').value, currentMode);
+    var qaResult = runIterativeQA(lines.join('\n'), currentMode);
+
+    $('out').value = qaResult.correctedText;
 
     var qaHtml = '';
     qaResult.issues.forEach(function(issue) {
@@ -537,7 +575,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
     $('stats').innerHTML = '<span class="badge">Sentences checked: ' + qaResult.sentenceCount + '</span>' +
                            '<span class="badge" style="background:' + (qaResult.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + qaResult.errorCount + '</span>';
 
-    toast('Transcript generated & QA checked!');
+    toast('Transcript generated with 5-pass QA loop!');
   });
 })();
 }
