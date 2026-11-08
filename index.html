@@ -83,7 +83,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
       <p class="sub">Header parameters and transcript house rules.</p>
       <label for="topic">Transcription Job (seven-word topic)</label>
       <div class="inline-input-btn">
-        <input type="text" id="topic" placeholder="e.g. Marketing Channels And Wholesalers Value Chain" autocomplete="off">
+        <input type="text" id="topic" placeholder="e.g. Price Demand On What And Future Developments" autocomplete="off">
         <button type="button" id="btnGenTitle" style="white-space:nowrap;">Auto Title</button>
       </div>
       <div class="hint" id="topicHint">0 words</div>
@@ -134,7 +134,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
       <h2><span class="n">4</span>Formatting options</h2>
       <p class="sub">Configure timestamp calculations and style engine rules.</p>
       <div class="checks">
-        <label><input type="checkbox" id="oContinuous" checked><span>Continuous timestamps (chained end-to-end)</span></label>
+        <label><input type="checkbox" id="oContinuous" checked><span>Continuous timestamps (chained end-to-end exactly)</span></label>
         <label><input type="checkbox" id="oRandomMs" checked><span>Randomize millisecond values (non-zero 1-9 digits)</span></label>
         <label><input type="checkbox" id="oNoShortForms" checked><span>Expand short forms & contractions (Clean Verbatim only)</span></label>
         <label><input type="checkbox" id="oNoRepetitions" checked><span>Remove word repetitions & stutters (Clean Verbatim only)</span></label>
@@ -329,7 +329,7 @@ function parseSRT(raw) {
   var tre = /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/;
   blocks.forEach(function(b) {
     var lines = b.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-    var ti = -1,tm = null;
+    var ti= -1, tm = null;
     for (var i = 0; i < lines.length; i++) { tm = tre.exec(lines[i]); if (tm) { ti = i; break; } }
     if (ti < 0) return;
     var ms = function(h, m, s, f) { return ((+h) * 3600 + (+m) * 60 + (+s)) * 1000 + parseInt((f + '00').slice(0, 3), 10); };
@@ -342,24 +342,24 @@ function parseSRT(raw) {
   return { segments: segs, kind: 'srt' };
 }
 
-// Ensure strict continuous end-to-end chaining
+// === STRICT CONTINUOUS END-TO-END CHAINING ENGINE ===
+// Guarantees Segment N end exactly equals Segment N+1 start
 function buildBlocks(parsed, cfg) {
   var segs = parsed.segments.map(function(s) { return { speaker: s.speaker, start: s.start, end: s.end, text: s.text }; });
   var audioMs = cfg.audioMs || 0, lastIdx = segs.length - 1;
   
   segs.forEach(function(s, i) {
     if (i < lastIdx) {
-      // Chain start of next block as end of current block for absolute continuity
+      // Force end of current segment to match start of next segment exactly
       s.end = segs[i + 1].start;
     } else {
-      // Final block ends at audio length or safely pads 2.5s
-      s.end = audioMs > s.start ? audioMs : s.start + 2500;
+      // Final block ending matches audio length or safely pads 3 seconds
+      s.end = audioMs > s.start ? audioMs : s.start + 3000;
     }
   });
   return segs;
 }
 
-// === ITERATIVE 5-PASS QA ENGINE WITH CONDITIONAL STRICT VERBATIM ===
 function runIterativeQA(transcriptText, mode, opts) {
   var currentText = transcriptText;
   var finalIssues = [];
@@ -389,13 +389,12 @@ function runIterativeQA(transcriptText, mode, opts) {
       sentenceCount++;
       var modifiedLine = line;
 
-      // Only apply short-form expansion and repetition cleanup if mode is NOT strict
+      // Conditional check: If mode is strict, do NOT expand contractions or strip repetitions
       if (mode !== 'strict') {
         if (opts.noShortForms) modifiedLine = expandShortForms(modifiedLine);
         if (opts.noRepetitions) modifiedLine = removeWordRepetitions(modifiedLine);
       }
 
-      // Check Capitalization
       var firstChar = modifiedLine.trim().charAt(0);
       if (firstChar && firstChar !== '"' && firstChar !== "'" && firstChar !== firstChar.toUpperCase()) {
         if (pass < 5) {
@@ -404,34 +403,23 @@ function runIterativeQA(transcriptText, mode, opts) {
             modifiedLine = modifiedLine.slice(0, lineIdx) + firstChar.toUpperCase() + modifiedLine.trim().slice(1);
           }
         } else {
-          issues.push({ level: 'bad', text: 'Pass 5: Sentence starts with lowercase letter ("' + modifiedLine.trim().slice(0, 25) + '...")' });
+          issues.push({ level: 'bad', text: 'Pass 5: Sentence starts with lowercase letter.' });
           errorCount++;
         }
       }
 
-      // Check Terminal Punctuation
       var lastChar = modifiedLine.trim().slice(-1);
       if (lastChar && !['.', '?', '!', '"', "'"].includes(lastChar)) {
         if (pass < 5) {
           modifiedLine = modifiedLine.trim() + '.';
         } else {
-          issues.push({ level: 'bad', text: 'Pass 5: Missing terminal punctuation (. ? !) at end of sentence.' });
+          issues.push({ level: 'bad', text: 'Pass 5: Missing terminal punctuation.' });
           errorCount++;
         }
       }
 
       if (modifiedLine.includes('  ')) {
         modifiedLine = modifiedLine.replace(/\s+/g, ' ');
-      }
-
-      // Clean Verbatim Filler Check (Only if not strict)
-      if (mode === 'edited') {
-        var lower = modifiedLine.toLowerCase();
-        var fillers = ['\\bum\\b', '\\buh\\b', '\\bah\\b', '\\berm\\b', '\\byou know\\b'];
-        fillers.forEach(function(f) {
-          var re = new RegExp(f, 'gi');
-          modifiedLine = modifiedLine.replace(re, '');
-        });
       }
 
       correctedLines.push(modifiedLine);
@@ -496,8 +484,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
       $('spkBox').innerHTML = '<div class="hint">No speakers found in raw input. Paste text with speaker headers first.</div>';
       toast('No speakers detected');
       return;
-    }
-
+  }
     speakerMapping = {};
     foundTags.forEach(function(tag, idx) {
       var defaultSuggestion = tag.replace(/Speaker\s*(\d+)/i, 'Male_$1');
@@ -552,7 +539,8 @@ if (typeof document !== 'undefined' && document.getElementById) {
       toast('Copied plain text!');
     });
   });
-   $('btnCheck').addEventListener('click', function() {
+
+  $('btnCheck').addEventListener('click', function() {
     var outText = $('out').value;
     if (!outText.trim()) {
       toast('No transcript to check');
@@ -586,7 +574,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
     var cfg = { audioMs: parseAudioLength($('audio').value) };
     var blocks = buildBlocks(parsed, cfg);
 
-    var rawAudioVal = ($('audio').value || '10:06').trim();
+    var rawAudioVal = ($('audio').value || '10:08').trim();
     if (!/minutes/i.test(rawAudioVal)) rawAudioVal += ' Minutes';
 
     var lines = [
@@ -627,7 +615,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
     $('stats').innerHTML = '<span class="badge">Sentences checked: ' + qaResult.sentenceCount + '</span>' +
                            '<span class="badge" style="background:' + (qaResult.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + qaResult.errorCount + '</span>';
 
-    toast('Transcript generated with continuous timestamps & strict/clean rules!');
+    toast('Transcript generated with strictly continuous timestamps!');
   });
 })();
 }
