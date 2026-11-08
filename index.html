@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transcript Studio & AGLE Automation Hub</title>
+<title>Transcript Studio & AGLE Hub</title>
 <style>
 :root {
   --bg: #f5f6f8; --card: #ffffff; --ink: #14181f; --muted: #596273;
@@ -68,7 +68,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
 <body>
 <div class="wrap">
 <header class="top">
-  <h1>Transcript Studio & AGLE Automation Hub</h1>
+  <h1>Transcript Studio & AGLE Hub</h1>
   <p>Formats transcripts to house style with realistic millisecond timestamps, auto 7-word topic generation, and AGLE/Verbit rule checking.</p>
 </header>
 <nav class="nav-tabs">
@@ -83,7 +83,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
       <p class="sub">Header parameters and transcript house rules.</p>
       <label for="topic">Transcription Job (seven-word topic)</label>
       <div class="inline-input-btn">
-        <input type="text" id="topic" placeholder="e.g. Virtual Real On Reality And Future Developments" autocomplete="off">
+        <input type="text" id="topic" placeholder="e.g. Marketing Channels And Wholesalers Value Chain" autocomplete="off">
         <button type="button" id="btnGenTitle" style="white-space:nowrap;">Auto Title</button>
       </div>
       <div class="hint" id="topicHint">0 words</div>
@@ -99,7 +99,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
         <div>
           <label for="project">Project type / Formatting Standard</label>
           <select id="project">
-            <optgroup label="Clean / Edited Verbatim"><option selected>Clean Verbatim (No Fillers/Short Forms)</option><option>Speech</option><option>Lectures</option><option>Zoom meeting</option></optgroup>
+            <optgroup label="Clean / Edited Verbatim"><option selected>Clean Verbatim (No Fillers)</option><option>Speech</option><option>Lectures</option><option>Zoom meeting</option></optgroup>
             <optgroup label="Strict Verbatim"><option>Strict Verbatim (Exact Spoken)</option><option>Legal dictation</option><option>Legal proceedings</option></optgroup>
           </select>
         </div>
@@ -134,10 +134,10 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
       <h2><span class="n">4</span>Formatting options</h2>
       <p class="sub">Configure timestamp calculations and style engine rules.</p>
       <div class="checks">
-        <label><input type="checkbox" id="oContinuous" checked><span>Continuous timestamps</span></label>
+        <label><input type="checkbox" id="oContinuous" checked><span>Continuous timestamps (chained end-to-end)</span></label>
         <label><input type="checkbox" id="oRandomMs" checked><span>Randomize millisecond values (non-zero 1-9 digits)</span></label>
-        <label><input type="checkbox" id="oNoShortForms" checked><span>Expand short forms & contractions (gonna ➔ going to, don't ➔ do not)</span></label>
-        <label><input type="checkbox" id="oNoRepetitions" checked><span>Remove word repetitions & stutters (the, the ➔ the)</span></label>
+        <label><input type="checkbox" id="oNoShortForms" checked><span>Expand short forms & contractions (Clean Verbatim only)</span></label>
+        <label><input type="checkbox" id="oNoRepetitions" checked><span>Remove word repetitions & stutters (Clean Verbatim only)</span></label>
         <label><input type="checkbox" id="oNumbers" checked><span>Apply numeric format rules (0-9 written, 10+ digits, %, currency)</span></label>
         <label><input type="checkbox" id="oGrammar" checked><span>Enforce strict capitalization & terminal punctuation</span></label>
       </div>
@@ -196,7 +196,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
     <section class="card span2">
       <h2><span class="n">📖</span>AGLE General Guidelines Cheat Sheet</h2>
       <div class="grid">
-        <div class="guide-card"><h3>1. Filler Words & Short Forms</h3><ul><li>Remove fillers (um, uh, like) and expand short forms (gonna ➔ going to) in Clean Verbatim.</li><li>In Strict Verbatim, preserve exact spoken words.</li></ul></div>
+        <div class="guide-card"><h3>1. Filler Words & Short Forms</h3><ul><li>Remove fillers and expand short forms ONLY in Clean Verbatim.</li><li>In Strict Verbatim, preserve exact spoken words, contractions, and stutters.</li></ul></div>
         <div class="guide-card"><h3>2. UI Buttons</h3><ul><li>Capitalize and quote interface buttons (press "Upload").</li></ul></div>
         <div class="guide-card"><h3>3. Numbers & Currency</h3><ul><li>0 to 9 written as words; 10+ as digits.</li><li>Format currency as $15, €27. Percentage as 5%.</li></ul></div>
         <div class="guide-card"><h3>4. Headers</h3><ul><li>Speaker tags match your input or custom mappings.</li><li>Topic headers target exactly 7 words.</li></ul></div>
@@ -270,45 +270,20 @@ function generateSevenWordTitle(rawText) {
   return parts.slice(0, 7).map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
 }
 
-// Text cleanups: Short form expander
 function expandShortForms(text) {
   var map = {
-    "\\bgonna\\b": "going to",
-    "\\bwanna\\b": "want to",
-    "\\bgotta\\b": "got to",
-    "\\bdon't\\b": "do not",
-    "\\bdoesn't\\b": "does not",
-    "\\bdidn't\\b": "did not",
-    "\\bcan't\\b": "cannot",
-    "\\bcouldn't\\b": "could not",
-    "\\bwon't\\b": "will not",
-    "\\bwouldn't\\b": "would not",
-    "\\bshouldn't\\b": "should not",
-    "\\bisn't\\b": "is not",
-    "\\baren't\\b": "are not",
-    "\\bwasn't\\b": "was not",
-    "\\bweren't\\b": "were not",
-    "\\bhaven't\\b": "have not",
-    "\\bhasn't\\b": "has not",
-    "\\bhadn't\\b": "had not",
-    "\\bit's\\b": "it is",
-    "\\bthat's\\b": "that is",
-    "\\bwhat's\\b": "what is",
-    "\\bthere's\\b": "there is",
-    "\\bhere's\\b": "here is",
-    "\\bi'm\\b": "I am",
-    "\\byou're\\b": "you are",
-    "\\bwe're\\b": "we are",
-    "\\bthey're\\b": "they are",
-    "\\bi've\\b": "I have",
-    "\\byou've\\b": "you have",
-    "\\bwe've\\b": "we have",
-    "\\bthey've\\b": "they have",
-    "\\bi'll\\b": "I will",
-    "\\byou'll\\b": "you will",
-    "\\bhe'll\\b": "he will",
-    "\\bshe'll\\b": "she will",
-    "\\bwe'll\\b": "we will",
+    "\\bgonna\\b": "going to", "\\bwanna\\b": "want to", "\\bgotta\\b": "got to",
+    "\\bdon't\\b": "do not", "\\bdoesn't\\b": "does not", "\\bdidn't\\b": "did not",
+    "\\bcan't\\b": "cannot", "\\bcouldn't\\b": "could not", "\\bwon't\\b": "will not",
+    "\\bwouldn't\\b": "would not", "\\bshouldn't\\b": "should not", "\\bisn't\\b": "is not",
+    "\\baren't\\b": "are not", "\\bwasn't\\b": "was not", "\\bweren't\\b": "were not",
+    "\\bhaven't\\b": "have not", "\\bhasn't\\b": "has not", "\\bhadn't\\b": "had not",
+    "\\bit's\\b": "it is", "\\bthat's\\b": "that is", "\\bwhat's\\b": "what is",
+    "\\bthere's\\b": "there is", "\\bhere's\\b": "here is", "\\bi'm\\b": "I am",
+    "\\byou're\\b": "you are", "\\bwe're\\b": "we are", "\\bthey're\\b": "they are",
+    "\\bi've\\b": "I have", "\\byou've\\b": "you have", "\\bwe've\\b": "we have",
+    "\\bthey've\\b": "they have", "\\bi'll\\b": "I will", "\\byou'll\\b": "you will",
+    "\\bhe'll\\b": "he will", "\\bshe'll\\b": "she will", "\\bwe'll\\b": "we will",
     "\\bthey'll\\b": "they will"
   };
   for (var pattern in map) {
@@ -318,7 +293,6 @@ function expandShortForms(text) {
   return text;
 }
 
-// Text cleanups: Remove word repetitions
 function removeWordRepetitions(text) {
   return text.replace(/\b(\w+)\s+\1\b/gi, '$1');
 }
@@ -355,7 +329,7 @@ function parseSRT(raw) {
   var tre = /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/;
   blocks.forEach(function(b) {
     var lines = b.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-    var ti = -1, tm = null;
+    var ti = -1,tm = null;
     for (var i = 0; i < lines.length; i++) { tm = tre.exec(lines[i]); if (tm) { ti = i; break; } }
     if (ti < 0) return;
     var ms = function(h, m, s, f) { return ((+h) * 3600 + (+m) * 60 + (+s)) * 1000 + parseInt((f + '00').slice(0, 3), 10); };
@@ -368,17 +342,24 @@ function parseSRT(raw) {
   return { segments: segs, kind: 'srt' };
 }
 
+// Ensure strict continuous end-to-end chaining
 function buildBlocks(parsed, cfg) {
   var segs = parsed.segments.map(function(s) { return { speaker: s.speaker, start: s.start, end: s.end, text: s.text }; });
   var audioMs = cfg.audioMs || 0, lastIdx = segs.length - 1;
+  
   segs.forEach(function(s, i) {
-    if (parsed.kind === 'text') s.end = i < lastIdx ? segs[i + 1].start : (audioMs > s.start ? audioMs : s.start + 2500);
-    else if (cfg.continuous && i < lastIdx) s.end = segs[i + 1].start;
+    if (i < lastIdx) {
+      // Chain start of next block as end of current block for absolute continuity
+      s.end = segs[i + 1].start;
+    } else {
+      // Final block ends at audio length or safely pads 2.5s
+      s.end = audioMs > s.start ? audioMs : s.start + 2500;
+    }
   });
   return segs;
 }
 
-// === ITERATIVE 5-PASS QA & AUTO-CORRECTION ENGINE ===
+// === ITERATIVE 5-PASS QA ENGINE WITH CONDITIONAL STRICT VERBATIM ===
 function runIterativeQA(transcriptText, mode, opts) {
   var currentText = transcriptText;
   var finalIssues = [];
@@ -408,14 +389,10 @@ function runIterativeQA(transcriptText, mode, opts) {
       sentenceCount++;
       var modifiedLine = line;
 
-      // Expand short forms if option checked or clean verbatim mode active
-      if (opts.noShortForms || mode === 'edited') {
-        modifiedLine = expandShortForms(modifiedLine);
-      }
-
-      // Remove word repetitions if option checked or clean verbatim mode active
-      if (opts.noRepetitions || mode === 'edited') {
-        modifiedLine = removeWordRepetitions(modifiedLine);
+      // Only apply short-form expansion and repetition cleanup if mode is NOT strict
+      if (mode !== 'strict') {
+        if (opts.noShortForms) modifiedLine = expandShortForms(modifiedLine);
+        if (opts.noRepetitions) modifiedLine = removeWordRepetitions(modifiedLine);
       }
 
       // Check Capitalization
@@ -441,13 +418,13 @@ function runIterativeQA(transcriptText, mode, opts) {
           issues.push({ level: 'bad', text: 'Pass 5: Missing terminal punctuation (. ? !) at end of sentence.' });
           errorCount++;
         }
-  }
-     // Remove double spaces
+      }
+
       if (modifiedLine.includes('  ')) {
         modifiedLine = modifiedLine.replace(/\s+/g, ' ');
       }
 
-      // Clean Verbatim Filler Check
+      // Clean Verbatim Filler Check (Only if not strict)
       if (mode === 'edited') {
         var lower = modifiedLine.toLowerCase();
         var fillers = ['\\bum\\b', '\\buh\\b', '\\bah\\b', '\\berm\\b', '\\byou know\\b'];
@@ -465,7 +442,7 @@ function runIterativeQA(transcriptText, mode, opts) {
   }
 
   if (finalIssues.length === 0) {
-    finalIssues.push({ level: 'ok', text: '5-Pass QA Loop completed! Grammar, punctuation, short forms, and repetitions verified.' });
+    finalIssues.push({ level: 'ok', text: '5-Pass QA Loop completed successfully!' });
   }
 
   return { correctedText: currentText, issues: finalIssues, sentenceCount: sentenceCount, errorCount: errorCount };
@@ -495,6 +472,16 @@ if (typeof document !== 'undefined' && document.getElementById) {
         toast('Audio length updated automatically: ' + $('audio').value);
       }
     };
+  });
+
+  $('project').addEventListener('change', function() {
+    var m = modeFor(this.value, $('mode').value);
+    $('modeBadge').textContent = m === 'strict' ? 'Strict Verbatim' : 'Clean Verbatim';
+  });
+
+  $('mode').addEventListener('change', function() {
+    var m = modeFor($('project').value, this.value);
+    $('modeBadge').textContent = m === 'strict' ? 'Strict Verbatim' : 'Clean Verbatim';
   });
 
   $('btnScanSpeakers').addEventListener('click', function() {
@@ -565,8 +552,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
       toast('Copied plain text!');
     });
   });
-
-  $('btnCheck').addEventListener('click', function() {
+   $('btnCheck').addEventListener('click', function() {
     var outText = $('out').value;
     if (!outText.trim()) {
       toast('No transcript to check');
@@ -597,10 +583,10 @@ if (typeof document !== 'undefined' && document.getElementById) {
     if (!$('topic').value.trim()) $('topic').value = generateSevenWordTitle($('raw').value);
     
     var parsed = parseInput($('raw').value);
-    var cfg = { continuous: $('oContinuous').checked, audioMs: parseAudioLength($('audio').value) };
+    var cfg = { audioMs: parseAudioLength($('audio').value) };
     var blocks = buildBlocks(parsed, cfg);
 
-    var rawAudioVal = ($('audio').value || '25:11').trim();
+    var rawAudioVal = ($('audio').value || '10:06').trim();
     if (!/minutes/i.test(rawAudioVal)) rawAudioVal += ' Minutes';
 
     var lines = [
@@ -611,6 +597,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
       'Audio Length: ' + rawAudioVal, 
       ''
     ];
+
     blocks.forEach(function(b) {
       var finalSpeaker = speakerMapping[b.speaker] !== undefined && speakerMapping[b.speaker].trim() !== '' 
                          ? speakerMapping[b.speaker].trim() 
@@ -640,7 +627,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
     $('stats').innerHTML = '<span class="badge">Sentences checked: ' + qaResult.sentenceCount + '</span>' +
                            '<span class="badge" style="background:' + (qaResult.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + qaResult.errorCount + '</span>';
 
-    toast('Transcript generated with 5-pass QA loop!');
+    toast('Transcript generated with continuous timestamps & strict/clean rules!');
   });
 })();
 }
