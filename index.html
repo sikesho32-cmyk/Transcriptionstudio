@@ -477,7 +477,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
       }
     };
   });
-
   $('file').addEventListener('change', function(e) {
     var file = e.target.files[0];
     if (!file) return;
@@ -562,7 +561,8 @@ if (typeof document !== 'undefined' && document.getElementById) {
     var blob = new Blob([$('out').value], { type: 'text/plain' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'transcript.txt'; a.click();
   });
-   $('btnCheck').addEventListener('click', function() {
+
+  $('btnCheck').addEventListener('click', function() {
     var outText = $('out').value;
     if (!outText.trim()) return;
     var currentMode = modeFor($('project').value, $('mode').value);
@@ -617,48 +617,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
   });
 })();
 }
-    $('stats').innerHTML = '<span class="badge">Sentences checked: ' + res.sentenceCount + '</span>' +
-                           '<span class="badge" style="background:' + (res.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + res.errorCount + '</span>';
-    toast('Transcript generated with anti-rejection rules!');
-  });
-
-  // ---> ATTACH THE MISSING EXPORT HANDLERS RIGHT HERE <---
-  $('file').addEventListener('change', function(e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(evt) {
-      $('raw').value = evt.target.result;
-      toast('File opened successfully!');
-    };
-    reader.readAsText(file);
-  });
-  if ($('btnFile')) {
-    $('btnFile').addEventListener('click', function() { $('file').click(); });
-  }
-
-  if ($('btnCopyRich')) {
-    $('btnCopyRich').addEventListener('click', function() {
-      navigator.clipboard.writeText($('out').value).then(function() { toast('Copied for Google Docs!'); });
-    });
-  }
-
-  if ($('btnDoc')) {
-    $('btnDoc').addEventListener('click', function() {
-      var blob = new Blob([$('out').value], { type: 'application/msword' });
-      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'transcript.doc'; a.click();
-    });
-  }
-
-  if ($('btnTxt')) {
-    $('btnTxt').addEventListener('click', function() {
-      var blob = new Blob([$('out').value], { type: 'text/plain' });
-      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'transcript.txt'; a.click();
-    });
-  }
-
-})(); // <--- End of IIFE function
 </script>
 </body>
-</html>
-
+</html> 
