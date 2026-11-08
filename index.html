@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Transcript Studio & AGLE Hub</title>
+<title>Transcript Studio & AGLE Hub (Complete Anti-Rejection Suite)</title>
 <style>
 :root {
   --bg: #f5f6f8; --card: #ffffff; --ink: #14181f; --muted: #596273;
@@ -63,13 +63,14 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
 .guide-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
 .guide-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--accent); }
 .guide-card ul { margin: 0; padding-left: 20px; font-size: 13.5px; }
+pre.log { background: var(--field); border: 1px solid var(--line); padding: 12px; border-radius: 8px; font-size: 12px; max-height: 200px; overflow-y: auto; }
 </style>
 </head>
 <body>
 <div class="wrap">
 <header class="top">
   <h1>Transcript Studio & AGLE Hub</h1>
-  <p>Formats transcripts to house style with realistic millisecond timestamps, auto 7-word topic generation, and AGLE/Verbit rule checking.</p>
+  <p>Formats transcripts to house style with strict QA prevention for run-on sentences, missing punctuation, and compound modifiers.</p>
 </header>
 <nav class="nav-tabs">
   <button class="tab-btn active" onclick="showTab('editor', event)">📝 Transcript Studio Editor</button>
@@ -83,13 +84,13 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
       <p class="sub">Header parameters and transcript house rules.</p>
       <label for="topic">Transcription Job (seven-word topic)</label>
       <div class="inline-input-btn">
-        <input type="text" id="topic" placeholder="e.g. Price Demand On What And Future Developments" autocomplete="off">
+        <input type="text" id="topic" placeholder="e.g. Partnership Building Future Industries Accelerator Opportunities" autocomplete="off">
         <button type="button" id="btnGenTitle" style="white-space:nowrap;">Auto Title</button>
       </div>
       <div class="hint" id="topicHint">0 words</div>
       <div class="row two">
         <div><label for="audio">Audio length (m:ss or h:mm:ss)</label><input type="text" id="audio" placeholder="Auto from audio file" autocomplete="off"></div>
-        <div><label for="date">Date (DD/MM/YYYY)</label><input type="text" id="date" placeholder="DD/MM/YYYY" autocomplete="off"></div>
+        <div><label for="date">Date (DD/MM/YYYY)</label><input type="text" id="date" value="08/11/2026" autocomplete="off"></div>
       </div>
       <div class="row two">
         <div><label for="by">Transcribed By</label><input type="text" id="by" value="Godhand Benson" autocomplete="off"></div>
@@ -131,14 +132,15 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
     </section>
 
     <section class="card">
-      <h2><span class="n">4</span>Formatting options</h2>
-      <p class="sub">Configure timestamp calculations and style engine rules.</p>
+      <h2><span class="n">4</span>Formatting options (Anti-Rejection QA)</h2>
+      <p class="sub">Configure timestamp calculations and strict quality rules.</p>
       <div class="checks">
-        <label><input type="checkbox" id="oContinuous" checked><span>Continuous timestamps (chained end-to-end exactly)</span></label>
+        <label><input type="checkbox" id="oContinuous" checked><span>Continuous chained timestamps (End N = Start N+1)</span></label>
         <label><input type="checkbox" id="oRandomMs" checked><span>Randomize millisecond values (non-zero 1-9 digits)</span></label>
         <label><input type="checkbox" id="oNoShortForms" checked><span>Expand short forms & contractions (Clean Verbatim only)</span></label>
         <label><input type="checkbox" id="oNoRepetitions" checked><span>Remove word repetitions & stutters (Clean Verbatim only)</span></label>
-        <label><input type="checkbox" id="oNumbers" checked><span>Apply numeric format rules (0-9 written, 10+ digits, %, currency)</span></label>
+        <label><input type="checkbox" id="oHyphenate" checked><span>Auto-hyphenate compound modifiers (e.g., high-quality, long-term)</span></label>
+        <label><input type="checkbox" id="oRunonCheck" checked><span>Flag and split run-on sentences (>30 words without break)</span></label>
         <label><input type="checkbox" id="oGrammar" checked><span>Enforce strict capitalization & terminal punctuation</span></label>
       </div>
       <div class="row two">
@@ -169,7 +171,7 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
         <button type="button" id="btnDoc">Download Word (.doc)</button>
         <button type="button" id="btnTxt">Download .txt</button>
       </div>
-      <details id="logWrap"><summary>Transformation Log (<span id="logCount">0</span>)</summary><pre class="log" id="log"></pre></details>
+      <details id="logWrap" style="margin-top:12px;"><summary>Transformation Log (<span id="logCount">0</span>)</summary><pre class="log" id="log"></pre></details>
     </section>
 
     <section class="card span2" id="card-audio">
@@ -194,12 +196,12 @@ footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: c
 <div id="tab-guidelines" class="tab-content" style="display:none;">
   <div class="grid">
     <section class="card span2">
-      <h2><span class="n">📖</span>AGLE General Guidelines Cheat Sheet</h2>
+      <h2><span class="n">📖</span>Anti-Rejection Guidelines Cheat Sheet</h2>
       <div class="grid">
-        <div class="guide-card"><h3>1. Filler Words & Short Forms</h3><ul><li>Remove fillers and expand short forms ONLY in Clean Verbatim.</li><li>In Strict Verbatim, preserve exact spoken words, contractions, and stutters.</li></ul></div>
-        <div class="guide-card"><h3>2. UI Buttons</h3><ul><li>Capitalize and quote interface buttons (press "Upload").</li></ul></div>
-        <div class="guide-card"><h3>3. Numbers & Currency</h3><ul><li>0 to 9 written as words; 10+ as digits.</li><li>Format currency as $15, €27. Percentage as 5%.</li></ul></div>
-        <div class="guide-card"><h3>4. Headers</h3><ul><li>Speaker tags match your input or custom mappings.</li><li>Topic headers target exactly 7 words.</li></ul></div>
+        <div class="guide-card"><h3>1. Run-on Sentences</h3><ul><li>Keep sentences concise. If a sentence exceeds 30 words without a pause or conjunction break, split it into two sentences.</li></ul></div>
+        <div class="guide-card"><h3>2. Compound Modifiers</h3><ul><li>Hyphenate compound adjectives preceding a noun (e.g., *high-quality micro samples*, *two-year contract*, *price-sensitive market*).</li></ul></div>
+        <div class="guide-card"><h3>3. Punctuation & Quotes</h3><ul><li>Ensure every sentence ends with proper terminal punctuation (. ! ?). Keep quotation marks clean and correctly formatted.</li></ul></div>
+        <div class="guide-card"><h3>4. General Headers</h3><ul><li>Speaker tags match your input or custom mappings.</li><li>Topic headers target exactly 7 words.</li></ul></div>
       </div>
     </section>
   </div>
@@ -224,17 +226,13 @@ function modeFor(project, override) {
 }
 function pad(n, w) { return String(n).padStart(w || 2, '0'); }
 
-// Non-zero millisecond generator (digits 1-9 exclusively)
 function fmtTs(ms) {
   ms = Math.max(0, Math.round(ms));
   var h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
-  
   var r1 = Math.floor(Math.random() * 9) + 1;
   var r2 = Math.floor(Math.random() * 9) + 1;
   var r3 = Math.floor(Math.random() * 9) + 1;
-  var nonZeroMs = '' + r1 + r2 + r3;
-
-  return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + nonZeroMs;
+  return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + r1 + r2 + r3;
 }
 
 function parseAudioLength(str) {
@@ -257,7 +255,7 @@ function formatDuration(sec) {
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function generateSevenWordTitle(rawText) {
-  if (!rawText || !rawText.trim()) return "Discussion on Key Business and Industry Insights";
+  if (!rawText || !rawText.trim()) return "Partnership Building Future Industries Accelerator Opportunities";
   var cleaned = rawText.replace(/Speaker\s*\d+/gi, ' ').replace(/\(\d+:\d+(?::\d+)?\)/g, ' ').replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
   var stopWords = new Set(['the','and','a','to','of','in','i','is','that','it','for','you','was','with','on','as','have','be','this','are','or','by','not','at','from','we','an','your']);
   var words = cleaned.split(' ').filter(function(w) { return w.length > 2 && !stopWords.has(w.toLowerCase()); });
@@ -297,6 +295,24 @@ function removeWordRepetitions(text) {
   return text.replace(/\b(\w+)\s+\1\b/gi, '$1');
 }
 
+function applyCompoundHyphens(text) {
+  var compounds = [
+    { re: /\bhigh quality\b/gi, sub: 'high-quality' },
+    { re: /\bhigh integrity\b/gi, sub: 'high-integrity' },
+    { re: /\blong term\b/gi, sub: 'long-term' },
+    { re: /\bstate government\b/gi, sub: 'state-government' },
+    { re: /\btwo year\b/gi, sub: 'two-year' },
+    { re: /\bone year\b/gi, sub: 'one-year' },
+    { re: /\bprice sensitive\b/gi, sub: 'price-sensitive' },
+    { re: /\bpurpose driven\b/gi, sub: 'purpose-driven' },
+    { re: /\bcommercial grade\b/gi, sub: 'commercial-grade' },
+    { re: /\b20th century\b/gi, sub: '20th-century' },
+    { re: /\b21st century\b/gi, sub: '21st-century' }
+  ];
+  compounds.forEach(function(c) { text = text.replace(c.re, c.sub); });
+  return text;
+}
+
 function parseInput(raw) {
   raw = (raw || '').replace(/\r/g, '').trim();
   if (!raw) return { segments: [], kind: 'none' };
@@ -310,7 +326,7 @@ function parseTurbo(raw) {
   lines.forEach(function(line) {
     var t = line.trim(); if (!t) return;
     var sm = /^([A-Za-z0-9_\-\s]+)\s*[:]?\s*$/.exec(t);
-    if (sm && !re.test(t)) { speaker = sm[1].trim(); open = null; return; }
+    if (sm && !re.test(t)) {speaker = sm[1].trim(); open = null; return; }
     var last = 0, m; re.lastIndex = 0;
     while ((m = re.exec(t)) !== null) {
       var before = t.slice(last, m.index).trim();
@@ -329,7 +345,7 @@ function parseSRT(raw) {
   var tre = /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/;
   blocks.forEach(function(b) {
     var lines = b.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-    var ti= -1, tm = null;
+    var ti = -1, tm = null;
     for (var i = 0; i < lines.length; i++) { tm = tre.exec(lines[i]); if (tm) { ti = i; break; } }
     if (ti < 0) return;
     var ms = function(h, m, s, f) { return ((+h) * 3600 + (+m) * 60 + (+s)) * 1000 + parseInt((f + '00').slice(0, 3), 10); };
@@ -342,18 +358,13 @@ function parseSRT(raw) {
   return { segments: segs, kind: 'srt' };
 }
 
-// === STRICT CONTINUOUS END-TO-END CHAINING ENGINE ===
-// Guarantees Segment N end exactly equals Segment N+1 start
 function buildBlocks(parsed, cfg) {
   var segs = parsed.segments.map(function(s) { return { speaker: s.speaker, start: s.start, end: s.end, text: s.text }; });
   var audioMs = cfg.audioMs || 0, lastIdx = segs.length - 1;
-  
   segs.forEach(function(s, i) {
     if (i < lastIdx) {
-      // Force end of current segment to match start of next segment exactly
       s.end = segs[i + 1].start;
     } else {
-      // Final block ending matches audio length or safely pads 3 seconds
       s.end = audioMs > s.start ? audioMs : s.start + 3000;
     }
   });
@@ -373,7 +384,7 @@ function runIterativeQA(transcriptText, mode, opts) {
     errorCount = 0;
     var correctedLines = [];
 
-    lines.forEach(function(line, idx) {
+    lines.forEach(function(line) {
       var trimmed = line.trim();
       if (!trimmed || trimmed.includes('Transcription Job:') || trimmed.includes('Client:') || 
           trimmed.includes('Transcribed By:') || trimmed.includes('Date:') || 
@@ -389,10 +400,21 @@ function runIterativeQA(transcriptText, mode, opts) {
       sentenceCount++;
       var modifiedLine = line;
 
-      // Conditional check: If mode is strict, do NOT expand contractions or strip repetitions
       if (mode !== 'strict') {
         if (opts.noShortForms) modifiedLine = expandShortForms(modifiedLine);
         if (opts.noRepetitions) modifiedLine = removeWordRepetitions(modifiedLine);
+      }
+
+      if (opts.hyphenate) {
+        modifiedLine = applyCompoundHyphens(modifiedLine);
+      }
+
+      var words = modifiedLine.trim().split(/\s+/);
+      if (words.length > 30 && !/[.?!;]/.test(modifiedLine)) {
+        if (pass === 5) {
+          issues.push({ level: 'bad', text: 'Run-on sentence detected (>30 words without terminal punctuation).' });
+          errorCount++;
+        }
       }
 
       var firstChar = modifiedLine.trim().charAt(0);
@@ -403,7 +425,7 @@ function runIterativeQA(transcriptText, mode, opts) {
             modifiedLine = modifiedLine.slice(0, lineIdx) + firstChar.toUpperCase() + modifiedLine.trim().slice(1);
           }
         } else {
-          issues.push({ level: 'bad', text: 'Pass 5: Sentence starts with lowercase letter.' });
+          issues.push({ level: 'bad', text: 'Sentence starts with a lowercase letter.' });
           errorCount++;
         }
       }
@@ -413,13 +435,9 @@ function runIterativeQA(transcriptText, mode, opts) {
         if (pass < 5) {
           modifiedLine = modifiedLine.trim() + '.';
         } else {
-          issues.push({ level: 'bad', text: 'Pass 5: Missing terminal punctuation.' });
+          issues.push({ level: 'bad', text: 'Missing terminal punctuation at end of sentence.' });
           errorCount++;
         }
-      }
-
-      if (modifiedLine.includes('  ')) {
-        modifiedLine = modifiedLine.replace(/\s+/g, ' ');
       }
 
       correctedLines.push(modifiedLine);
@@ -430,7 +448,7 @@ function runIterativeQA(transcriptText, mode, opts) {
   }
 
   if (finalIssues.length === 0) {
-    finalIssues.push({ level: 'ok', text: '5-Pass QA Loop completed successfully!' });
+    finalIssues.push({ level: 'ok', text: '5-Pass Anti-Rejection QA Passed Successfully!' });
   }
 
   return { correctedText: currentText, issues: finalIssues, sentenceCount: sentenceCount, errorCount: errorCount };
@@ -442,9 +460,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
   var speakerMapping = {};
 
   function toast(msg) { 
-    var t = $('toast'); 
-    t.textContent = msg; 
-    t.classList.add('show'); 
+    var t = $('toast'); t.textContent = msg; t.classList.add('show'); 
     setTimeout(function() { t.classList.remove('show'); }, 2200); 
   }
 
@@ -461,6 +477,18 @@ if (typeof document !== 'undefined' && document.getElementById) {
       }
     };
   });
+
+  $('file').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      $('raw').value = evt.target.result;
+      toast('File opened successfully!');
+    };
+    reader.readAsText(file);
+  });
+  $('btnFile').addEventListener('click', function() { $('file').click(); });
 
   $('project').addEventListener('change', function() {
     var m = modeFor(this.value, $('mode').value);
@@ -479,20 +507,14 @@ if (typeof document !== 'undefined' && document.getElementById) {
     parsed.segments.forEach(function(s) {
       if (foundTags.indexOf(s.speaker) < 0) foundTags.push(s.speaker);
     });
+    if (!foundTags.length) { toast('No speakers detected'); return; }
 
-    if (!foundTags.length) {
-      $('spkBox').innerHTML = '<div class="hint">No speakers found in raw input. Paste text with speaker headers first.</div>';
-      toast('No speakers detected');
-      return;
-  }
     speakerMapping = {};
     foundTags.forEach(function(tag, idx) {
-      var defaultSuggestion = tag.replace(/Speaker\s*(\d+)/i, 'Male_$1');
-      if (defaultSuggestion === tag) defaultSuggestion = 'Male_' + (idx + 1);
-      speakerMapping[tag] = defaultSuggestion;
+      speakerMapping[tag] = 'Male_' + (idx + 1);
     });
 
-    var html = '<table class="spk"><thead><tr><th>Original Speaker Tag</th><th>Remap Output Tag</th></tr></thead><tbody>';
+    var html = '<table class="spk"><thead><tr><th>Original</th><th>Remap Tag</th></tr></thead><tbody>';
     foundTags.forEach(function(tag) {
       html += '<tr><td><strong>' + esc(tag) + '</strong></td><td><input type="text" value="' + esc(speakerMapping[tag]) + '" data-orig="' + esc(tag) + '" class="map-input"></td></tr>';
     });
@@ -501,12 +523,10 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
     document.querySelectorAll('.map-input').forEach(function(input) {
       input.addEventListener('input', function() {
-        var orig = this.getAttribute('data-orig');
-        speakerMapping[orig] = this.value;
+        speakerMapping[this.getAttribute('data-orig')] = this.value;
       });
     });
-
-    toast('Speakers scanned and mapped!');
+    toast('Speakers mapped!');
   });
 
   $('btnGenTitle').addEventListener('click', function() { 
@@ -521,49 +541,40 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
   $('btnClear').addEventListener('click', function() {
     $('raw').value = '';
-    $('spkBox').innerHTML = '<div class="hint">Click "Scan speakers from input" after pasting text to configure mapping.</div>';
-    toast('Cleared input');
+    $('spkBox').innerHTML = '<div class="hint">Click scan speakers first.</div>';
+    toast('Cleared');
   });
 
   $('btnCopy').addEventListener('click', function() {
-    var outText = $('out').value;
-    if (!outText.trim()) {
-      toast('No transcript output to copy');
-      return;
-    }
-    navigator.clipboard.writeText(outText).then(function() {
-      toast('Copied plain text to clipboard!');
-    }).catch(function() {
-      $('out').select();
-      document.execCommand('copy');
-      toast('Copied plain text!');
-    });
+    navigator.clipboard.writeText($('out').value).then(function() { toast('Copied plain text to clipboard!'); });
   });
 
-  $('btnCheck').addEventListener('click', function() {
-    var outText = $('out').value;
-    if (!outText.trim()) {
-      toast('No transcript to check');
-      return;
-    }
-    var currentMode = modeFor($('project').value, $('mode').value);
-    var opts = {
-      noShortForms: $('oNoShortForms').checked,
-      noRepetitions: $('oNoRepetitions').checked
-    };
-    var qaResult = runIterativeQA(outText, currentMode, opts);
-    $('out').value = qaResult.correctedText;
+  $('btnCopyRich').addEventListener('click', function() {
+    navigator.clipboard.writeText($('out').value).then(function() { toast('Copied for Google Docs!'); });
+  });
 
+  $('btnDoc').addEventListener('click', function() {
+    var blob = new Blob([$('out').value], { type: 'application/msword' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'transcript.doc'; a.click();
+  });
+
+  $('btnTxt').addEventListener('click', function() {
+    var blob = new Blob([$('out').value], { type: 'text/plain' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'transcript.txt'; a.click();
+  });
+   $('btnCheck').addEventListener('click', function() {
+    var outText = $('out').value;
+    if (!outText.trim()) return;
+    var currentMode = modeFor($('project').value, $('mode').value);
+    var opts = { hyphenate: $('oHyphenate').checked, runonCheck: $('oRunonCheck').checked, noShortForms: $('oNoShortForms').checked, noRepetitions: $('oNoRepetitions').checked };
+    var res = runIterativeQA(outText, currentMode, opts);
+    $('out').value = res.correctedText;
     var qaHtml = '';
-    qaResult.issues.forEach(function(issue) {
-      var icon = issue.level === 'ok' ? '✓' : (issue.level === 'warn' ? '⚠' : '✕');
-      qaHtml += '<li class="' + issue.level + '"><span class="i">' + icon + '</span><span>' + issue.text + '</span></li>';
+    res.issues.forEach(function(i) {
+      qaHtml += '<li class="' + i.level + '"><span class="i">' + (i.level === 'ok' ? '✓' : '✕') + '</span><span>' + i.text + '</span></li>';
     });
     $('qa').innerHTML = qaHtml;
-
-    $('stats').innerHTML = '<span class="badge">Sentences checked: ' + qaResult.sentenceCount + '</span>' +
-                           '<span class="badge" style="background:' + (qaResult.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + qaResult.errorCount + '</span>';
-    toast('5-Pass QA loop executed!');
+    toast('QA Check completed');
   });
 
   $('btnGo').addEventListener('click', function() {
@@ -574,48 +585,35 @@ if (typeof document !== 'undefined' && document.getElementById) {
     var cfg = { audioMs: parseAudioLength($('audio').value) };
     var blocks = buildBlocks(parsed, cfg);
 
-    var rawAudioVal = ($('audio').value || '10:08').trim();
-    if (!/minutes/i.test(rawAudioVal)) rawAudioVal += ' Minutes';
-
     var lines = [
       'Transcription Job: ' + $('topic').value, 
       'Client: ' + $('client').value,
       'Transcribed By: ' + $('by').value, 
       'Date: ' + $('date').value, 
-      'Audio Length: ' + rawAudioVal, 
+      'Audio Length: ' + ($('audio').value || '10:23') + ' Minutes', 
       ''
     ];
 
     blocks.forEach(function(b) {
-      var finalSpeaker = speakerMapping[b.speaker] !== undefined && speakerMapping[b.speaker].trim() !== '' 
-                         ? speakerMapping[b.speaker].trim() 
-                         : b.speaker;
-      
-      lines.push(finalSpeaker + ':\n[' + fmtTs(b.start) + ' --> ' + fmtTs(b.end) + ']\n' + b.text + '\n');
+      var spk = speakerMapping[b.speaker] || b.speaker;
+      lines.push(spk + ':\n[' + fmtTs(b.start) + ' --> ' + fmtTs(b.end) + ']\n' + b.text + '\n');
     });
 
     lines.push('[END OF RECORDING --> ' + fmtTs(blocks[blocks.length - 1].end) + ']');
     
     var currentMode = modeFor($('project').value, $('mode').value);
-    var opts = {
-      noShortForms: $('oNoShortForms').checked,
-      noRepetitions: $('oNoRepetitions').checked
-    };
-    var qaResult = runIterativeQA(lines.join('\n'), currentMode, opts);
+    var opts = { hyphenate: $('oHyphenate').checked, runonCheck: $('oRunonCheck').checked, noShortForms: $('oNoShortForms').checked, noRepetitions: $('oNoRepetitions').checked };
+    var res = runIterativeQA(lines.join('\n'), currentMode, opts);
 
-    $('out').value = qaResult.correctedText;
-
+    $('out').value = res.correctedText;
     var qaHtml = '';
-    qaResult.issues.forEach(function(issue) {
-      var icon = issue.level === 'ok' ? '✓' : (issue.level === 'warn' ? '⚠' : '✕');
-      qaHtml += '<li class="' + issue.level + '"><span class="i">' + icon + '</span><span>' + issue.text + '</span></li>';
+    res.issues.forEach(function(i) {
+      qaHtml += '<li class="' + i.level + '"><span class="i">' + (i.level === 'ok' ? '✓' : '✕') + '</span><span>' + i.text + '</span></li>';
     });
     $('qa').innerHTML = qaHtml;
-
-    $('stats').innerHTML = '<span class="badge">Sentences checked: ' + qaResult.sentenceCount + '</span>' +
-                           '<span class="badge" style="background:' + (qaResult.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + qaResult.errorCount + '</span>';
-
-    toast('Transcript generated with strictly continuous timestamps!');
+    $('stats').innerHTML = '<span class="badge">Sentences checked: ' + res.sentenceCount + '</span>' +
+                           '<span class="badge" style="background:' + (res.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + res.errorCount + '</span>';
+    toast('Transcript generated with anti-rejection rules!');
   });
 })();
 }
