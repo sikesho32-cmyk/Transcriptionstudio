@@ -244,7 +244,6 @@ function modeFor(project, override) {
 }
 function pad(n, w) { return String(n).padStart(w || 2, '0'); }
 
-// Eagle Web Timestamp Format: [HH:MM:SS.mmm --> HH:MM:SS.mmm] with continuous non-zero milliseconds
 function fmtTs(ms, useNonZeroMs) {
   ms = Math.max(0, Math.round(ms));
   var h = Math.floor(ms / 3600000);
@@ -296,30 +295,31 @@ function generateSevenWordTitle(rawText) {
   return parts.slice(0, 7).map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
 }
 
-function expandShortForms(text) {
+// General Writing Rules: US Spelling & Standardized Terms
+function applyGeneralWritingRules(text) {
   var map = {
-    "\\bgonna\\b": "going to", "\\bwanna\\b": "want to", "\\bgotta\\b": "got to",
-    "\\bdon't\\b": "do not", "\\bdoesn't\\b": "does not", "\\bdidn't\\b": "did not",
-    "\\bcan't\\b": "cannot", "\\bcouldn't\\b": "could not", "\\bwon't\\b": "will not",
-    "\\bwouldn't\\b": "would not", "\\bshouldn't\\b": "should not", "\\bisn't\\b": "is not",
-    "\\baren't\\b": "are not", "\\bwasn't\\b": "was not", "\\bweren't\\b": "were not",
-    "\\bhaven't\\b": "have not", "\\bhasn't\\b": "has not", "\\bhadn't\\b": "had not",
-    "\\bit's\\b": "it is", "\\bthat's\\b": "that is", "\\bwhat's\\b": "what is",
-    "\\bthere's\\b": "there is", "\\bhere's\\b": "here is", "\\bi'm\\b": "I am",
-    "\\byou're\\b": "you are", "\\bwe're\\b": "we are", "\\bthey're\\b": "they are",
-    "\\bi've\\b": "I have", "\\byou've\\b": "you have", "\\bwe've\\b": "we have",
-    "\\bthey've\\b": "they have", "\\bi'll\\b": "I will", "\\byou'll\\b": "you will",
-    "\\bhe'll\\b": "he will", "\\bshe'll\\b": "she will", "\\bwe'll\\b": "we will",
-    "\\bthey'll\\b": "they will"
+    "\\be-mail\\b": "email",
+    "\\balright\\b": "all right",
+    "\\bO\\.K\\.\\b": "okay",
+    "\\byep\\b": "yeah",
+    "\\byup\\b": "yeah",
+    "\\bya'll\\b": "y'all",
+    "\\bAm\\b": "I'm",
+    "\\bT\\.V\\.\\b": "TV",
+    "\\bU\\.S\\.\\b": "US",
+    "\\bU\\.K\\.\\b": "UK"
   };
-  for (var pattern in map) {
-    text = text.replace(new RegExp(pattern, "gi"), map[pattern]);
+  for (var pat in map) {
+    text = text.replace(new RegExp(pat, "gi"), map[pat]);
   }
   return text;
 }
 
 function removeWordRepetitions(text) {
-  return text.replace(/\b(\w+)(?:,\s*|\s+)\1\b/gi, '$1');
+  text = text.replace(/\b(\w+)(?:,\s*|\s+)\1\b/gi, '$1');
+  text = text.replace(/\bIt's just that's\b/gi, "That's");
+  text = text.replace(/\bIt is just that is\b/gi, "That is");
+  return text;
 }
 
 function applyCompoundHyphens(text) {
@@ -455,6 +455,7 @@ function parseSRT(raw) {
   return { segments: segs, kind: 'srt' };
 }
 
+// 10 to 17-Second Window Block Builder (Strict Minimum 10s, Maximum 17s Ceiling)
 function buildBlocks(parsed, cfg) {
   var rawSegs = parsed.segments.map(function(s) {
     return { speaker: s.speaker, start: s.start, end: s.end || 0, text: s.text.trim() };
@@ -467,13 +468,14 @@ function buildBlocks(parsed, cfg) {
     if (merged.length > 0) {
       var prev = merged[merged.length - 1];
       var sameSpeaker = prev.speaker === cur.speaker;
-      var blockDur = cur.start - prev.start;
-      var prevIncomplete = cfg.mergeSentences && !/[.?!]["']?$/.test(prev.text) && blockDur <= 20000;
-      var underMaxBlock = cfg.maxBlockMs > 0 && (blockDur <= cfg.maxBlockMs);
+      var currentDuration = cur.start - prev.start;
 
-      if (sameSpeaker && (prevIncomplete || underMaxBlock)) {
+      var isUnderTenSeconds = currentDuration < 10000;
+      var isUnderMaxWindow = currentDuration < 17000;
+
+      if (sameSpeaker && isUnderTenSeconds && isUnderMaxWindow) {
         prev.text += ' ' + cur.text;
-        if (cur.end > prev.end) prev.end = cur.end;
+        prev.end = cur.end > prev.start ? cur.end : cur.start + 10000;
         continue;
       }
     }
@@ -484,14 +486,15 @@ function buildBlocks(parsed, cfg) {
   var lastIdx = merged.length - 1;
 
   merged.forEach(function(s, idx) {
-    if (cfg.continuous) {
-      if (idx < lastIdx) {
-        s.end = Math.max(s.start + 250, merged[idx + 1].start);
-      } else {
-        s.end = audioMs > s.start ? audioMs : Math.max(s.end, s.start + 3000);
-      }
-    } else if (!s.end || s.end <= s.start) {
-      s.end = idx < lastIdx ? merged[idx + 1].start : (audioMs > s.start ? audioMs : s.start + 3000);
+    if (!s.end || s.end <= s.start) {
+      s.end = idx < lastIdx ? merged[idx + 1].start : (audioMs > s.start ? audioMs : s.start + 12000);
+    }
+    var dur = s.end - s.start;
+    if (dur > 17000 && idx < lastIdx) {
+      s.end = s.start + 15000; // Cap long blocks within the 10-17s target
+    }
+    if (cfg.continuous && idx < lastIdx) {
+      s.end = Math.max(s.start + 10000, merged[idx + 1].start);
     }
   });
 
@@ -532,8 +535,9 @@ function runIterativeQA(transcriptText, mode, opts) {
         modifiedLine = applyVocabCorrections(modifiedLine, opts.corr);
       }
 
+      modifiedLine = applyGeneralWritingRules(modifiedLine);
+
       if (mode !== 'strict') {
-        if (opts.noShortForms) modifiedLine = expandShortForms(modifiedLine);
         if (opts.noRepetitions) modifiedLine = removeWordRepetitions(modifiedLine);
       }
 
@@ -548,6 +552,9 @@ function runIterativeQA(transcriptText, mode, opts) {
       }
 
       modifiedLine = modifiedLine.replace(/\.{2,}/g, '.');
+
+      // Rule: No exclamation marks unless company name
+      modifiedLine = modifiedLine.replace(/!/g, '.');
 
       modifiedLine = modifiedLine.replace(/([.?!]\s+)([a-z])/g, function(m, p1, p2) {
         return p1 + p2.toUpperCase();
@@ -775,8 +782,23 @@ if (typeof document !== 'undefined' && document.getElementById) {
     navigator.clipboard.writeText($('out').value).then(function() { toast('Copied plain text!'); });
   });
 
-  $('btnCopyRich').addEventListener('click', function() {
-    navigator.clipboard.writeText($('out').value).then(function() { toast('Copied for Google Docs!'); });
+  // Rich HTML + Plain Text clipboard copy so Eagle Web's submission box NEVER collapses line breaks!
+  $('btnCopyRich').addEventListener('click', async function() {
+    var plain = $('out').value;
+    if (!plain.trim()) return;
+    var htmlLines = plain.split('\n').map(function(l) {
+      return l.trim() === '' ? '<p><br></p>' : '<p>' + esc(l) + '</p>';
+    }).join('');
+    try {
+      var item = new ClipboardItem({
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+        'text/html': new Blob([htmlLines], { type: 'text/html' })
+      });
+      await navigator.clipboard.write([item]);
+      toast('Copied with preserved line breaks!');
+    } catch (e) {
+      navigator.clipboard.writeText(plain).then(function() { toast('Copied plain text!'); });
+    }
   });
 
   $('btnDoc').addEventListener('click', function() {
@@ -793,7 +815,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
     return {
       hyphenate: $('oHyphenate').checked,
       runonCheck: $('oRunonCheck').checked,
-      noShortForms: $('oNoShortForms').checked,
       noRepetitions: $('oNoRepetitions').checked,
       grammar: $('oGrammar').checked,
       corr: $('corr').value
@@ -870,6 +891,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
   });
 })();
 }
-</script>
+</script
 </body>
 </html>
