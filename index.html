@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+7<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -229,7 +229,6 @@ pre.log { background: var(--field); border: 1px solid var(--line); padding: 12px
 <footer>Transcript Studio Engine</footer>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
 <script>
 function showTab(tabName, evt) {
   document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
@@ -245,17 +244,20 @@ function modeFor(project, override) {
 }
 function pad(n, w) { return String(n).padStart(w || 2, '0'); }
 
-// FIXED: Deterministic non-zero milliseconds so End N === Start N+1 always matches!
+// Eagle Web Timestamp Format: [HH:MM:SS.mmm --> HH:MM:SS.mmm] with continuous non-zero milliseconds
 function fmtTs(ms, useNonZeroMs) {
   ms = Math.max(0, Math.round(ms));
   var h = Math.floor(ms / 3600000);
   var m = Math.floor((ms % 3600000) / 60000);
   var s = Math.floor((ms % 60000) / 1000);
   var rem = ms % 1000;
+
   if (useNonZeroMs) {
-    var d1 = Math.floor(rem / 100) || 1;
-    var d2 = Math.floor((rem % 100) / 10) || 3;
-    var d3 = (rem % 10) || 7;
+    var totalSec = Math.floor(ms / 1000);
+    var seed = (totalSec * 2654435761 + rem * 17) >>> 0;
+    var d1 = (Math.floor(rem / 100) || ((seed % 9) + 1));
+    var d2 = (Math.floor((rem % 100) / 10) || (((seed >> 4) % 9) + 1));
+    var d3 = ((rem % 10) || (((seed >> 8) % 9) + 1));
     return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + d1 + d2 + d3;
   }
   return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + pad(rem, 3);
@@ -264,11 +266,11 @@ function fmtTs(ms, useNonZeroMs) {
 function parseAudioLength(str) {
   str = (str || '').replace(/minutes/gi, '').trim(); 
   if (!str) return 0;
-  var p = str.split(':').map(function(x) { return parseInt(x, 10); });
+  var p = str.split(':').map(function(x) { return parseFloat(x); });
   if (p.some(isNaN)) return 0;
-  if (p.length === 1) return p[0] * 60000;
-  if (p.length === 2) return (p[0] * 60 + p[1]) * 1000;
-  return (p[0] * 3600 + p[1] * 60 + p[2]) * 1000;
+  if (p.length === 1) return Math.round(p[0] * 60000);
+  if (p.length === 2) return Math.round((p[0] * 60 + p[1]) * 1000);
+  return Math.round((p[0] * 3600 + p[1] * 60 + p[2]) * 1000);
 }
 
 function formatDuration(sec) {
@@ -281,15 +283,15 @@ function formatDuration(sec) {
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function generateSevenWordTitle(rawText) {
-  if (!rawText || !rawText.trim()) return "Partnership Building Future Industries Accelerator Opportunities";
-  var cleaned = rawText.replace(/Speaker\s*\d+/gi, ' ').replace(/\(\d+:\d+(?::\d+)?\)/g, ' ').replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  var stopWords = new Set(['the','and','a','to','of','in','i','is','that','it','for','you','was','with','on','as','have','be','this','are','or','by','not','at','from','we','an','your']);
+  if (!rawText || !rawText.trim()) return "Online Business Panel Discussion Growth Strategies";
+  var cleaned = rawText.replace(/Speaker\s*\d+|Male_\d+|Female_\d+/gi, ' ').replace(/\(\d+:\d+(?::\d+)?(?:\.\d+)?\)/g, ' ').replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  var stopWords = new Set(['the','and','a','to','of','in','i','is','that','it','for','you','was','with','on','as','have','be','this','are','or','by','not','at','from','we','an','your','they','there','here','what','when','how','can','will','just','like']);
   var words = cleaned.split(' ').filter(function(w) { return w.length > 2 && !stopWords.has(w.toLowerCase()); });
   if (words.length < 3) return "Comprehensive Transcript Analysis and Overview Summary Report";
   var freq = {}; words.forEach(function(w) { var cap = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); freq[cap] = (freq[cap] || 0) + 1; });
   var sorted = Object.keys(freq).sort(function(a, b) { return freq[b] - freq[a]; });
-  var p1 = sorted[0] || "Industry", p2 = sorted[1] || "Trends", p3 = sorted[2] || "Opportunities";
-  var parts = (p1 + " " + p2 + " on " + p3 + " and Future Developments").split(' ');
+  var p1 = sorted[0] || "Business", p2 = sorted[1] || "Panel", p3 = sorted[2] || "Discussion";
+  var parts = (p1 + " " + p2 + " " + p3 + " Strategic Growth Insights Overview").split(' ');
   while (parts.length < 7) parts.push("Insights");
   return parts.slice(0, 7).map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
 }
@@ -317,11 +319,11 @@ function expandShortForms(text) {
 }
 
 function removeWordRepetitions(text) {
-  return text.replace(/\b(\w+)\s+\1\b/gi, '$1');
+  return text.replace(/\b(\w+)(?:,\s*|\s+)\1\b/gi, '$1');
 }
 
 function applyCompoundHyphens(text) {
-  var  compounds = [
+  var compounds = [
     { re: /\bhigh quality\b/gi, sub: 'high-quality' },
     { re: /\bhigh integrity\b/gi, sub: 'high-integrity' },
     { re: /\blong term\b/gi, sub: 'long-term' },
@@ -331,6 +333,8 @@ function applyCompoundHyphens(text) {
     { re: /\bprice sensitive\b/gi, sub: 'price-sensitive' },
     { re: /\bpurpose driven\b/gi, sub: 'purpose-driven' },
     { re: /\bcommercial grade\b/gi, sub: 'commercial-grade' },
+    { re: /\bthree way\b/gi, sub: 'three-way' },
+    { re: /\btwo way\b/gi, sub: 'two-way' },
     { re: /\b20th century\b/gi, sub: '20th-century' },
     { re: /\b21st century\b/gi, sub: '21st-century' }
   ];
@@ -354,35 +358,38 @@ function applyVocabCorrections(text, corrRaw) {
   return text;
 }
 
-// Smart run-on splitter: splits >30 word sentences at natural punctuation or conjunctions, never mid-phrase
 function smartSplitRunOn(text) {
-  var words = text.trim().split(/\s+/);
-  if (words.length <= 30) return text;
+  var sentences = text.split(/(?<=[.?!])\s+/);
+  var out = sentences.map(function(sent) {
+    var words = sent.trim().split(/\s+/);
+    if (words.length <= 30) return sent.trim();
 
-  var result = [];
-  var currentChunk = [];
+    var result = [];
+    var currentChunk = [];
 
-  for (var i = 0; i < words.length; i++) {
-    currentChunk.push(words[i]);
-    if (currentChunk.length >= 18) {
-      var w = words[i];
-      var nextW = (words[i + 1] || '').toLowerCase().replace(/[^a-z]/g, '');
-      var isNaturalBreak = /[,;]$/.test(w) || ['and', 'but', 'so', 'because', 'however', 'which'].indexOf(nextW) > -1;
-      if (isNaturalBreak || currentChunk.length >= 28) {
-        var sentence = currentChunk.join(' ').replace(/[,;]$/, '') + '.';
-        sentence = sentence.charAt(0).toUpperCase() + sentence.slice(1);
-        result.push(sentence);
-        currentChunk = [];
+    for (var i = 0; i < words.length; i++) {
+      currentChunk.push(words[i]);
+      if (currentChunk.length >= 18) {
+        var w = words[i];
+        var nextW = (words[i + 1] || '').toLowerCase().replace(/[^a-z]/g, '');
+        var isNaturalBreak = /[,;]$/.test(w) || ['and', 'but', 'so', 'because', 'however', 'which'].indexOf(nextW) > -1;
+        if (isNaturalBreak || currentChunk.length >= 28) {
+          var chunkStr = currentChunk.join(' ').replace(/[,;.]+$/, '') + '.';
+          chunkStr = chunkStr.charAt(0).toUpperCase() + chunkStr.slice(1);
+          result.push(chunkStr);
+          currentChunk = [];
+        }
       }
     }
-  }
-  if (currentChunk.length > 0) {
-    var tail = currentChunk.join(' ');
-    if (!/[.?!]$/.test(tail)) tail += '.';
-    tail = tail.charAt(0).toUpperCase() + tail.slice(1);
-    result.push(tail);
-  }
-  return result.join(' ');
+    if (currentChunk.length > 0) {
+      var tail = currentChunk.join(' ').replace(/\.+$/, '');
+      if (!/[.?!]$/.test(tail)) tail += '.';
+      tail = tail.charAt(0).toUpperCase() + tail.slice(1);
+      result.push(tail);
+    }
+    return result.join(' ');
+  });
+  return out.join(' ');
 }
 
 function parseInput(raw) {
@@ -392,11 +399,10 @@ function parseInput(raw) {
   return parseTurbo(raw);
 }
 
-// FIXED: Non-global check for speaker lines so re.lastIndex never skips the first timestamp!
 function parseTurbo(raw) {
-  var lines = raw.split('\n'), segs = [], speaker = 'Speaker 1', open = null;
-  var hasTsRe = /\(\d+:\d{2}(?::\d{2})?\)/;
-  var re = /\((\d+):(\d{2})(?::(\d{2}))?\)/g;
+  var lines = raw.split('\n'), segs = [], speaker = 'Male_1', open = null;
+  var hasTsRe = /\(\d+:\d{2}(?::\d{2})?(?:\.\d{1,3})?\)/;
+  var re = /\((\d+):(\d{2})(?::(\d{2}))?(?:\.(\d{1,3}))?\)/g;
 
   lines.forEach(function(line) {
     var t = line.trim(); if (!t) return;
@@ -414,9 +420,10 @@ function parseTurbo(raw) {
         if (open) open.text += (open.text ? ' ' : '') + before;
         else { open = { speaker: speaker, start: 0, text: before }; segs.push(open); }
       }
+      var msPart = m[4] ? parseInt((m[4] + '00').slice(0, 3), 10) : 0;
       var start = m[3] !== undefined
-        ? ((+m[1]) * 3600 + (+m[2]) * 60 + (+m[3])) * 1000
-        : ((+m[1]) * 60 + (+m[2])) * 1000;
+        ? ((+m[1]) * 3600 + (+m[2]) * 60 + (+m[3])) * 1000 + msPart
+        : ((+m[1]) * 60 + (+m[2])) * 1000 + msPart;
       open = { speaker: speaker, start: start, text: '' };
       segs.push(open);
       last = m.index + m[0].length;
@@ -431,7 +438,7 @@ function parseTurbo(raw) {
 }
 
 function parseSRT(raw) {
-  var blocks = raw.split(/\n\s*\n/), segs = [], lastSpk = 'Speaker 1';
+  var blocks = raw.split(/\n\s*\n/), segs = [], lastSpk = 'Male_1';
   var tre = /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/;
   blocks.forEach(function(b) {
     var lines = b.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
@@ -448,7 +455,6 @@ function parseSRT(raw) {
   return { segments: segs, kind: 'srt' };
 }
 
-// FIXED: Merges mid-sentence timestamp cuts & guarantees continuous timestamps all the way to the end!
 function buildBlocks(parsed, cfg) {
   var rawSegs = parsed.segments.map(function(s) {
     return { speaker: s.speaker, start: s.start, end: s.end || 0, text: s.text.trim() };
@@ -461,8 +467,9 @@ function buildBlocks(parsed, cfg) {
     if (merged.length > 0) {
       var prev = merged[merged.length - 1];
       var sameSpeaker = prev.speaker === cur.speaker;
-      var prevIncomplete = cfg.mergeSentences && !/[.?!]["']?$/.test(prev.text);
-      var underMaxBlock = cfg.maxBlockMs > 0 && ((cur.start - prev.start) <= cfg.maxBlockMs);
+      var blockDur = cur.start - prev.start;
+      var prevIncomplete = cfg.mergeSentences && !/[.?!]["']?$/.test(prev.text) && blockDur <= 20000;
+      var underMaxBlock = cfg.maxBlockMs > 0 && (blockDur <= cfg.maxBlockMs);
 
       if (sameSpeaker && (prevIncomplete || underMaxBlock)) {
         prev.text += ' ' + cur.text;
@@ -479,9 +486,8 @@ function buildBlocks(parsed, cfg) {
   merged.forEach(function(s, idx) {
     if (cfg.continuous) {
       if (idx < lastIdx) {
-        s.end = Math.max(s.start + 200, merged[idx + 1].start);
+        s.end = Math.max(s.start + 250, merged[idx + 1].start);
       } else {
-        // Final segment stretches cleanly to total audio length
         s.end = audioMs > s.start ? audioMs : Math.max(s.end, s.start + 3000);
       }
     } else if (!s.end || s.end <= s.start) {
@@ -508,9 +514,9 @@ function runIterativeQA(transcriptText, mode, opts) {
 
     lines.forEach(function(line) {
       var trimmed = line.trim();
-      if (!trimmed || trimmed.indexOf('Transcription Job:') === 0 || trimmed.indexOf('Client:') === 0 || 
-          trimmed.indexOf('Transcribed By:') === 0 || trimmed.indexOf('Date:') === 0 || 
-          trimmed.indexOf('Audio Length:') === 0 || trimmed.charAt(0) === '[') {
+      if (!trimmed || trimmed.indexOf('Transcription Job Title:') === 0 || trimmed.indexOf('Client:') === 0 || 
+          trimmed.indexOf('Transcriber:') === 0 || trimmed.indexOf('Date:') === 0 || 
+          trimmed.indexOf('Total Audio Length:') === 0 || trimmed.charAt(0) === '[') {
         correctedLines.push(line);
         return;
       }
@@ -540,6 +546,12 @@ function runIterativeQA(transcriptText, mode, opts) {
         modifiedLine = smartSplitRunOn(modifiedLine);
         if (beforeSplit !== modifiedLine) logs.push('Split run-on sentence cleanly at clause boundary.');
       }
+
+      modifiedLine = modifiedLine.replace(/\.{2,}/g, '.');
+
+      modifiedLine = modifiedLine.replace(/([.?!]\s+)([a-z])/g, function(m, p1, p2) {
+        return p1 + p2.toUpperCase();
+      });
 
       var words = modifiedLine.trim().split(/\s+/);
       if (words.length > 35 && !/[.?!;]/.test(modifiedLine)) {
@@ -593,12 +605,12 @@ if (typeof document !== 'undefined' && document.getElementById) {
   var $ = function(id) { return document.getElementById(id); };
   var speakerMapping = {};
   var selectedAudioFile = null;
-function toast(msg) { 
+
+  function toast(msg) { 
     var t = $('toast'); t.textContent = msg; t.classList.add('show'); 
     setTimeout(function() { t.classList.remove('show'); }, 2400); 
   }
 
-  // Load saved Groq API key
   var savedKey = localStorage.getItem('groq_api_key');
   if (savedKey) $('groqKey').value = savedKey;
 
@@ -637,7 +649,6 @@ function toast(msg) {
     };
   });
 
-  // Direct Groq Whisper Transcription
   $('btnTranscribe').addEventListener('click', async function() {
     var apiKey = $('groqKey').value.trim();
     if (!apiKey) { toast('Enter your free Groq API key first'); return; }
@@ -672,14 +683,16 @@ function toast(msg) {
 
       var data = await response.json();
       if (!data.segments || !data.segments.length) {
-        $('raw').value = 'Speaker 1\n(0:00) ' + (data.text || '');
+        $('raw').value = 'Male_1\n(0:00.123) ' + (data.text || '');
       } else {
-        var outLines = ['Speaker 1'];
+        var outLines = ['Male_1'];
         data.segments.forEach(function(seg) {
-          var totalSec = Math.floor(seg.start || 0);
+          var totalMs = Math.round((seg.start || 0) * 1000);
+          var totalSec = Math.floor(totalMs / 1000);
           var m = Math.floor(totalSec / 60);
           var s = totalSec % 60;
-          outLines.push('(' + m + ':' + pad(s) + ') ' + seg.text.trim());
+          var ms = pad(totalMs % 1000, 3);
+          outLines.push('(' + m + ':' + pad(s) + '.' + ms + ') ' + seg.text.trim());
         });
         $('raw').value = outLines.join('\n');
       }
@@ -696,7 +709,6 @@ function toast(msg) {
     }
   });
 
-  // Audio player clock & speed controls
   $('rate').addEventListener('change', function() { $('player').playbackRate = parseFloat(this.value); });
   $('player').addEventListener('timeupdate', function() {
     $('clock').textContent = fmtTs(this.currentTime * 1000, false);
@@ -724,7 +736,7 @@ function toast(msg) {
 
     speakerMapping = {};
     foundTags.forEach(function(tag, idx) {
-      speakerMapping[tag] = 'Male_' + (idx + 1);
+      speakerMapping[tag] = tag.includes('_') ? tag : 'Male_' + (idx + 1);
     });
 
     var html = '<table class="spk"><thead><tr><th>Original</th><th>Remap Tag</th></tr></thead><tbody>';
@@ -749,7 +761,7 @@ function toast(msg) {
   });
 
   $('btnSample').addEventListener('click', function() {
-    $('raw').value = "Speaker 1\n(0:00) Welcome everyone to today's strategy discussion. (0:04) We have a lot to cover.\nSpeaker 2\n(0:09) Thank you for having me on the call.";
+    $('raw').value = "Male_1\n(0:00.245) Welcome everyone to today's strategy discussion. (0:04.618) We have a lot to cover.\nFemale_1\n(0:09.392) Thank you for having me on the call.";
     toast('Sample loaded');
   });
 
@@ -830,20 +842,23 @@ function toast(msg) {
     var useNonZeroMs = $('oRandomMs').checked;
     var audioLenLabel = ($('audio').value || formatDuration(blocks[blocks.length - 1].end / 1000)).replace(/minutes/gi, '').trim();
 
+    // Official Eagle Web Head Tag Format
     var lines = [
-      'Transcription Job: ' + $('topic').value, 
+      'Transcription Job Title: ' + $('topic').value, 
       'Client: ' + $('client').value,
-      'Transcribed By: ' + $('by').value, 
+      'Transcriber: ' + $('by').value, 
       'Date: ' + $('date').value, 
-      'Audio Length: ' + audioLenLabel + ' Minutes', 
+      'Total Audio Length: ' + audioLenLabel + ' minutes', 
       ''
     ];
 
     blocks.forEach(function(b) {
       var spk = speakerMapping[b.speaker] || b.speaker;
+      // Eagle Web Speaker Label + Spaced Timestamp format
       lines.push(spk + ':\n[' + fmtTs(b.start, useNonZeroMs) + ' --> ' + fmtTs(b.end, useNonZeroMs) + ']\n' + b.text + '\n');
     });
 
+    // Official Eagle Web End Tag Format
     lines.push('[END OF RECORDING --> ' + fmtTs(blocks[blocks.length - 1].end, useNonZeroMs) + ']');
 
     var currentMode = modeFor($('project').value, $('mode').value);
@@ -851,7 +866,7 @@ function toast(msg) {
 
     $('out').value = res.correctedText;
     renderQA(res);
-    toast('Transcript generated with continuous timestamps!');
+    toast('Transcript generated to Eagle Web standards!');
   });
 })();
 }
