@@ -244,21 +244,12 @@ function modeFor(project, override) {
 }
 function pad(n, w) { return String(n).padStart(w || 2, '0'); }
 
-function fmtTs(ms, useNonZeroMs) {
+function fmtTs(ms) {
   ms = Math.max(0, Math.round(ms));
   var h = Math.floor(ms / 3600000);
   var m = Math.floor((ms % 3600000) / 60000);
   var s = Math.floor((ms % 60000) / 1000);
   var rem = ms % 1000;
-
-  if (useNonZeroMs) {
-    var totalSec = Math.floor(ms / 1000);
-    var seed = (totalSec * 2654435761 + rem * 17) >>> 0;
-    var d1 = (Math.floor(rem / 100) || ((seed % 9) + 1));
-    var d2 = (Math.floor((rem % 100) / 10) || (((seed >> 4) % 9) + 1));
-    var d3 = ((rem % 10) || (((seed >> 8) % 9) + 1));
-    return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + d1 + d2 + d3;
-  }
   return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + pad(rem, 3);
 }
 
@@ -295,7 +286,6 @@ function generateSevenWordTitle(rawText) {
   return parts.slice(0, 7).map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
 }
 
-// General Writing Rules: US Spelling & Standardized Terms
 function applyGeneralWritingRules(text) {
   var map = {
     "\\be-mail\\b": "email",
@@ -454,51 +444,51 @@ function parseSRT(raw) {
   });
   return { segments: segs, kind: 'srt' };
 }
-
-// 10 to 17-Second Window Block Builder (Strict Minimum 10s, Maximum 17s Ceiling)
+// 20 to 30-Second Sentence-Boundary Block Builder (Min 20s, Max 30s, No mid-sentence cuts)
 function buildBlocks(parsed, cfg) {
   var rawSegs = parsed.segments.map(function(s) {
     return { speaker: s.speaker, start: s.start, end: s.end || 0, text: s.text.trim() };
   });
   if (!rawSegs.length) return [];
 
-  var merged = [];
-  for (var i = 0; i < rawSegs.length; i++) {
+  var blocks = [];
+  var curBlock = { speaker: rawSegs[0].speaker, start: rawSegs[0].start, end: rawSegs[0].end, text: rawSegs[0].text };
+
+  for (var i = 1; i < rawSegs.length; i++) {
     var cur = rawSegs[i];
-    if (merged.length > 0) {
-      var prev = merged[merged.length - 1];
-      var sameSpeaker = prev.speaker === cur.speaker;
-      var currentDuration = cur.start - prev.start;
+    var sameSpeaker = cur.speaker === curBlock.speaker;
+    var blockDuration = cur.start - curBlock.start;
+    
+    var endsWithPunctuation = /[.?!]["']?$/.test(curBlock.text);
 
-      var isUnderTenSeconds = currentDuration < 10000;
-      var isUnderMaxWindow = currentDuration < 17000;
+    var reachedMinWindow = blockDuration >= 20000;
+    var exceededMaxWindow = blockDuration >= 30000;
 
-      if (sameSpeaker && isUnderTenSeconds && isUnderMaxWindow) {
-        prev.text += ' ' + cur.text;
-        prev.end = cur.end > prev.start ? cur.end : cur.start + 10000;
-        continue;
-      }
+    if (sameSpeaker && (!reachedMinWindow || !endsWithPunctuation) && !exceededMaxWindow) {
+      curBlock.text += ' ' + cur.text;
+      if (cur.end > curBlock.end) curBlock.end = cur.end;
+    } else {
+      if (curBlock.end <= curBlock.start) curBlock.end = curBlock.start + 20000;
+      blocks.push(curBlock);
+      curBlock = { speaker: cur.speaker, start: cur.start, end: cur.end, text: cur.text };
     }
-    merged.push(cur);
   }
+  blocks.push(curBlock);
 
   var audioMs = cfg.audioMs || 0;
-  var lastIdx = merged.length - 1;
+  var lastIdx = blocks.length - 1;
 
-  merged.forEach(function(s, idx) {
-    if (!s.end || s.end <= s.start) {
-      s.end = idx < lastIdx ? merged[idx + 1].start : (audioMs > s.start ? audioMs : s.start + 12000);
-    }
-    var dur = s.end - s.start;
-    if (dur > 17000 && idx < lastIdx) {
-      s.end = s.start + 15000; // Cap long blocks within the 10-17s target
-    }
-    if (cfg.continuous && idx < lastIdx) {
-      s.end = Math.max(s.start + 10000, merged[idx + 1].start);
+  blocks.forEach(function(b, idx) {
+    if (!b.end || b.end <= b.start) {
+      b.end = idx < lastIdx ? blocks[idx + 1].start : (audioMs > b.start ? audioMs : b.start + 20000);
     }
   });
 
-  return merged;
+  if (audioMs > 0 && blocks.length > 0) {
+    blocks[blocks.length - 1].end = audioMs;
+  }
+
+  return blocks;
 }
 
 function runIterativeQA(transcriptText, mode, opts) {
@@ -552,8 +542,6 @@ function runIterativeQA(transcriptText, mode, opts) {
       }
 
       modifiedLine = modifiedLine.replace(/\.{2,}/g, '.');
-
-      // Rule: No exclamation marks unless company name
       modifiedLine = modifiedLine.replace(/!/g, '.');
 
       modifiedLine = modifiedLine.replace(/([.?!]\s+)([a-z])/g, function(m, p1, p2) {
@@ -612,8 +600,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
   var $ = function(id) { return document.getElementById(id); };
   var speakerMapping = {};
   var selectedAudioFile = null;
-
-  function toast(msg) { 
+function toast(msg) { 
     var t = $('toast'); t.textContent = msg; t.classList.add('show'); 
     setTimeout(function() { t.classList.remove('show'); }, 2400); 
   }
@@ -718,7 +705,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
   $('rate').addEventListener('change', function() { $('player').playbackRate = parseFloat(this.value); });
   $('player').addEventListener('timeupdate', function() {
-    $('clock').textContent = fmtTs(this.currentTime * 1000, false);
+    $('clock').textContent = fmtTs(this.currentTime * 1000);
   });
   $('btnClock').addEventListener('click', function() {
     navigator.clipboard.writeText($('clock').textContent).then(function() { toast('Timestamp copied!'); });
@@ -782,7 +769,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
     navigator.clipboard.writeText($('out').value).then(function() { toast('Copied plain text!'); });
   });
 
-  // Rich HTML + Plain Text clipboard copy so Eagle Web's submission box NEVER collapses line breaks!
   $('btnCopyRich').addEventListener('click', async function() {
     var plain = $('out').value;
     if (!plain.trim()) return;
@@ -810,8 +796,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
     var blob = new Blob([$('out').value], { type: 'text/plain' });
     var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'transcript.txt'; a.click();
   });
-
-  function getQAOpts() {
+function getQAOpts() {
     return {
       hyphenate: $('oHyphenate').checked,
       runonCheck: $('oRunonCheck').checked,
@@ -860,10 +845,8 @@ if (typeof document !== 'undefined' && document.getElementById) {
     var blocks = buildBlocks(parsed, cfg);
     if (!blocks.length) { toast('No valid text blocks found'); return; }
 
-    var useNonZeroMs = $('oRandomMs').checked;
     var audioLenLabel = ($('audio').value || formatDuration(blocks[blocks.length - 1].end / 1000)).replace(/minutes/gi, '').trim();
 
-    // Official Eagle Web Head Tag Format
     var lines = [
       'Transcription Job Title: ' + $('topic').value, 
       'Client: ' + $('client').value,
@@ -875,12 +858,10 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
     blocks.forEach(function(b) {
       var spk = speakerMapping[b.speaker] || b.speaker;
-      // Eagle Web Speaker Label + Spaced Timestamp format
-      lines.push(spk + ':\n[' + fmtTs(b.start, useNonZeroMs) + ' --> ' + fmtTs(b.end, useNonZeroMs) + ']\n' + b.text + '\n');
+      lines.push(spk + ':\n[' + fmtTs(b.start) + ' --> ' + fmtTs(b.end) + ']\n' + b.text + '\n');
     });
 
-    // Official Eagle Web End Tag Format
-    lines.push('[END OF RECORDING --> ' + fmtTs(blocks[blocks.length - 1].end, useNonZeroMs) + ']');
+    lines.push('[END OF RECORDING --> ' + fmtTs(blocks[blocks.length - 1].end) + ']');
 
     var currentMode = modeFor($('project').value, $('mode').value);
     var res = runIterativeQA(lines.join('\n'), currentMode, getQAOpts());
@@ -891,6 +872,6 @@ if (typeof document !== 'undefined' && document.getElementById) {
   });
 })();
 }
-</script
-</body>
-</html>
+</script>
+<body>
+<html>
