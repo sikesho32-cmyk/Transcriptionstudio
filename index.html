@@ -102,14 +102,14 @@ pre.log { background: var(--field); border: 1px solid var(--line); padding: 12px
 
       <label for="topic">Transcription Job Topic (Seven words)</label>
       <div class="inline-input-btn">
-        <input type="text" id="topic" value="Hellenization and Empire Dynamics in Ancient Judea" autocomplete="off">
+        <input type="text" id="topic" placeholder="e.g. Simultaneous Kidney Exchange Logistics in Modern Medicine" autocomplete="off">
         <button type="button" id="btnGenTitle" style="white-space:nowrap;">Auto Title</button>
       </div>
-      <div class="hint" id="topicHint">7 words (Exact match!)</div>
+      <div class="hint" id="topicHint">0 words (Target: 7 words)</div>
 
       <div class="row two">
-        <div><label for="audio">Audio length (m:ss or h:mm:ss)</label><input type="text" id="audio" value="10:04" autocomplete="off"></div>
-        <div><label for="date">Date (DD/MM/YYYY)</label><input type="text" id="date" value="09/11/2026" autocomplete="off"></div>
+        <div><label for="audio">Audio length (m:ss or h:mm:ss)</label><input type="text" id="audio" placeholder="Auto-detected or e.g. 05:05" autocomplete="off"></div>
+        <div><label for="date">Date (DD/MM/YYYY)</label><input type="text" id="date" value="" autocomplete="off"></div>
       </div>
       <div class="row two">
         <div><label for="by">Transcribed By</label><input type="text" id="by" value="Godhand Benson" autocomplete="off"></div>
@@ -164,7 +164,8 @@ pre.log { background: var(--field); border: 1px solid var(--line); padding: 12px
         <label><input type="checkbox" id="oGrammar" checked><span>Enforce strict capitalization & terminal punctuation</span></label>
       </div>
       <div class="row two">
-        <div><label for="maxBlock">Merge blocks up to (seconds)</label><input type="number" id="maxBlock" value="0" min="0"></div>
+        <div><label for="minBlock">Minimum block duration (seconds)</label><input type="number" id="minBlock" value="8" min="4"></div>
+        <div><label for="maxBlock">Target max block duration (seconds)</label><input type="number" id="maxBlock" value="15" min="8"></div>
       </div>
       <label for="corr">Vocabulary Corrections (wrong => right)</label>
       <textarea id="corr" style="min-height:90px" spellcheck="false" placeholder="Snick => SNCC"></textarea>
@@ -194,7 +195,7 @@ pre.log { background: var(--field); border: 1px solid var(--line); padding: 12px
       <details id="logWrap" style="margin-top:12px;"><summary>Transformation Log (<span id="logCount">0</span>)</summary><pre class="log" id="log"></pre></details>
     </section>
 
-   <section class="card span2" id="card-audio">
+    <section class="card span2" id="card-audio">
       <h2><span class="n">6</span>Audio player & timestamp checker</h2>
       <div class="row two">
         <div>
@@ -220,7 +221,7 @@ pre.log { background: var(--field); border: 1px solid var(--line); padding: 12px
         <div class="guide-card"><h3>1. Run-on Sentences</h3><ul><li>Keep sentences concise. If a sentence exceeds 30 words without a pause or conjunction break, split it cleanly at natural punctuation or clauses.</li></ul></div>
         <div class="guide-card"><h3>2. Compound Modifiers</h3><ul><li>Hyphenate compound adjectives preceding a noun (e.g., <em>high-quality micro samples</em>, <em>two-year contract</em>, <em>price-sensitive market</em>).</li></ul></div>
         <div class="guide-card"><h3>3. Punctuation & Quotes</h3><ul><li>Ensure every sentence ends with proper terminal punctuation (. ! ?). Keep quotation marks clean and correctly formatted.</li></ul></div>
-        <div class="guide-card"><h3>4. Continuous Timestamps</h3><ul><li>Every segment end time equals the exact start time of the next segment, running continuously to the end of the audio file.</li></ul></div>
+        <div class="guide-card"><h3>4. Continuous Timestamps</h3><ul><li>Every segment end time equals the exact start time of the next segment, running continuously to the end of the audio file without overflowing.</li></ul></div>
       </div>
     </section>
   </div>
@@ -242,20 +243,26 @@ function modeFor(project, override) {
   if (override === 'strict' || override === 'edited') return override;
   return STRICT_PROJECTS.indexOf(project) > -1 ? 'strict' : 'edited';
 }
-function pad(n, w) { return String(n).padStart(w || 2, '0'); }
+function pad(n, w) { return String(Math.floor(Math.abs(n))).padStart(w || 2, '0'); }
 
-// Bulletproof Timestamp Formatting with randomized/deterministic milliseconds (.xxx)
-function fmtTs(ms, forceRandomMs) {
-  ms = Math.abs(Math.round(ms || 0));
-  if (forceRandomMs && (ms % 1000 === 0)) {
-    // Generate a pseudo-random stable millisecond offset between 100 and 899 if raw ms is zero
-    ms += (Math.abs(Math.sin(ms + 1) * 7919) % 800) + 100;
-  }
+// Integer-only Bulletproof Timestamp Formatting (Zero floating-point corruption)
+function fmtTs(ms) {
+  ms = Math.max(0, Math.round(Number(ms) || 0));
   var h = Math.floor(ms / 3600000);
   var m = Math.floor((ms % 3600000) / 60000);
   var s = Math.floor((ms % 60000) / 1000);
-  var rem = Math.min(999, Math.max(10, ms % 1000));
-  return pad(h) + ':' + pad(m) + ':' + pad(s) + '.' + pad(rem, 3);
+  var rem = ms % 1000;
+  return pad(h, 2) + ':' + pad(m, 2) + ':' + pad(s, 2) + '.' + pad(rem, 3);
+}
+
+// Deterministic randomized non-zero milliseconds helper
+function randomizeBoundaryMs(ms, seed) {
+  ms = Math.max(0, Math.round(Number(ms) || 0));
+  var secBase = Math.floor(ms / 1000) * 1000;
+  var currentMs = ms % 1000;
+  if (currentMs > 0) return ms;
+  var randMs = 113 + ((Math.abs((seed + 1) * 487 + Math.floor(secBase / 1000) * 293)) % 840);
+  return secBase + randMs;
 }
 
 function parseAudioLength(str) {
@@ -278,17 +285,109 @@ function formatDuration(sec) {
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function generateSevenWordTitle(rawText) {
-  if (!rawText || !rawText.trim()) return "Hellenization and Empire Dynamics in Ancient Judea";
-  var cleaned = rawText.replace(/Speaker\s*\d+|Male_\d+|Female_\d+/gi, ' ').replace(/\(\d+:\d+(?::\d+)?(?:\.\d+)?\)/g, ' ').replace(/[^a-zA-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  var stopWords = new Set(['the','and','a','to','of','in','i','is','that','it','for','you','was','with','on','as','have','be','this','are','or','by','not','at','from','we','an','your','they','there','here','what','when','how','can','will','just','like']);
-  var words = cleaned.split(' ').filter(function(w) { return w.length > 2 && !stopWords.has(w.toLowerCase()); });
-  if (words.length < 3) return "Hellenization and Empire Dynamics in Ancient Judea";
-  var freq = {}; words.forEach(function(w) { var cap = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(); freq[cap] = (freq[cap] || 0) + 1; });
-  var sorted = Object.keys(freq).sort(function(a, b) { return freq[b] - freq[a]; });
-  var p1 = sorted[0] || "Hellenization", p2 = sorted[1] || "Empire", p3 = sorted[2] || "Dynamics";
-  var parts = (p1 + " " + p2 + " " + p3 + " in Ancient Judea Context").split(' ');
-  while (parts.length < 7) parts.push("Judea");
-  return parts.slice(0, 7).map(function(w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' ');
+  if (!rawText || !rawText.trim()) return "Panel Discussion on Key Industry Growth Insights";
+  var cleaned = rawText
+    .replace(/Speaker\s*\d+|Male_\d+|Female_\d+/gi, ' ')
+    .replace(/\[\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}\]/g, ' ')
+    .replace(/\(\d+:\d+(?::\d+)?(?:\.\d+)?\)/g, ' ')
+    .replace(/[^a-zA-Z0-9\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  var stopWords = new Set([
+    'the','and','a','to','of','in','i','is','that','it','for','you','was','with','on','as','have','be','this','are','or','by','not','at','from','we','an','your','they','there','here','what','when','how','can','will','just','like','so','but','if','then','than','into','out','up','down','about','which','who','whom','whose','where','why','all','any','both','each','few','more','most','other','some','such','no','nor','only','own','same','too','very','s','t','don','now','going','get','got','say','said','one','two','three','way','thing','things','really','actually','kind','sort','yeah','okay','well','know','think','see','look','make','take','come','want','need','use','used'
+  ]);
+
+  var words = cleaned.split(' ').filter(function(w) {
+    return w.length > 2 && !stopWords.has(w.toLowerCase()) && !/^\d+$/.test(w);
+  });
+
+  if (words.length < 3) return "Comprehensive Audio Transcript Review and Summary Report";
+
+  var freq = {};
+  var order = [];
+  words.forEach(function(w) {
+    var cap = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    if (!freq[cap]) {
+      freq[cap] = 0;
+      order.push(cap);
+    }
+    freq[cap] += 1;
+  });
+
+  var sorted = order.slice().sort(function(a, b) { return freq[b] - freq[a]; });
+  var top = sorted.slice(0, 5);
+  var fillers = ["Overview", "Analysis", "Discussion", "Insights", "Process", "Dynamics", "Review"];
+  var titleWords = [];
+
+  if (top.length >= 5) {
+    titleWords = [top[0], top[1], "and", top[2], top[3], "in", top[4]];
+  } else {
+    titleWords = top.slice();
+    var fi = 0;
+    while (titleWords.length < 7) {
+      var candidate = fillers[fi % fillers.length];
+      if (titleWords.indexOf(candidate) === -1) titleWords.push(candidate);
+      fi++;
+    }
+  }
+
+  return titleWords.slice(0, 7).map(function(w) {
+    return (w === 'and' || w === 'in' || w === 'of' || w === 'on') ? w : w.charAt(0).toUpperCase() + w.slice(1);
+  }).join(' ');
+}
+
+function expandShortForms(text) {
+  var contractions = [
+    [/\bcan't\b/gi, "cannot"],
+    [/\bwon't\b/gi, "will not"],
+    [/\bdon't\b/gi, "do not"],
+    [/\bdoesn't\b/gi, "does not"],
+    [/\bdidn't\b/gi, "did not"],
+    [/\bisn't\b/gi, "is not"],
+    [/\baren't\b/gi, "are not"],
+    [/\bwasn't\b/gi, "was not"],
+    [/\bweren't\b/gi, "were not"],
+    [/\bhaven't\b/gi, "have not"],
+    [/\bhasn't\b/gi, "has not"],
+    [/\bhadn't\b/gi, "had not"],
+    [/\bwouldn't\b/gi, "would not"],
+    [/\bcouldn't\b/gi, "could not"],
+    [/\bshouldn't\b/gi, "should not"],
+    [/\bI'm\b/g, "I am"],
+    [/\byou're\b/gi, "you are"],
+    [/\bwe're\b/gi, "we are"],
+    [/\bthey're\b/gi, "they are"],
+    [/\bit's\b/gi, "it is"],
+    [/\bthat's\b/gi, "that is"],
+    [/\bwhat's\b/gi, "what is"],
+    [/\bthere's\b/gi, "there is"],
+    [/\bhere's\b/gi, "here is"],
+    [/\bI've\b/g, "I have"],
+    [/\byou've\b/gi, "you have"],
+    [/\bwe've\b/gi, "we have"],
+    [/\bthey've\b/gi, "they have"],
+    [/\bI'll\b/g, "I will"],
+    [/\byou'll\b/gi, "you will"],
+    [/\bwe'll\b/gi, "we will"],
+    [/\bthey'll\b/gi, "they will"],
+    [/\bhe'll\b/gi, "he will"],
+    [/\bshe'll\b/gi, "she will"],
+    [/\bit'll\b/gi, "it will"],
+    [/\bI'd\b/g, "I would"],
+    [/\byou'd\b/gi, "you would"],
+    [/\bwe'd\b/gi, "we would"],
+    [/\bthey'd\b/gi, "they would"]
+  ];
+  contractions.forEach(function(pair) {
+    text = text.replace(pair[0], function(match) {
+      if (match.charAt(0) === match.charAt(0).toUpperCase() && match.charAt(0) !== 'I') {
+        return pair[1].charAt(0).toUpperCase() + pair[1].slice(1);
+      }
+      return pair[1];
+    });
+  });
+  return text;
 }
 
 function applyGeneralWritingRules(text) {
@@ -299,7 +398,6 @@ function applyGeneralWritingRules(text) {
     "\\byep\\b": "yeah",
     "\\byup\\b": "yeah",
     "\\bya'll\\b": "y'all",
-    "\\bAm\\b": "I'm",
     "\\bT\\.V\\.\\b": "TV",
     "\\bU\\.S\\.\\b": "US",
     "\\bU\\.K\\.\\b": "UK"
@@ -311,10 +409,22 @@ function applyGeneralWritingRules(text) {
 }
 
 function removeWordRepetitions(text) {
-  text = text.replace(/\b(\w+)(?:,\s*|\s+)\1\b/gi, '$1');
+  // Remove repeated words separated by spaces or commas (e.g. "and, and, and, and" -> "and", "here's, here's" -> "here's")
+  var prev;
+  do {
+    prev = text;
+    text = text.replace(/\b([A-Za-z']+)(?:,\s*|\s+)\1\b/gi, '$1');
+  } while (text !== prev);
+
+  // Remove repeated two-word stutters (e.g., "they would, they would" or "this kind of simultaneous this kind of simultaneous")
+  text = text.replace(/\b(\w+\s+\w+)(?:,\s*|\s+)\1\b/gi, '$1');
+  text = text.replace(/\b(\w+\s+\w+\s+\w+\s+\w+)(?:,\s*|\s+)\1\b/gi, '$1');
+
+  // Remove filler interjections in clean verbatim
+  text = text.replace(/\b(?:uh|um|uh-huh|mm-hmm)\b,?\s*/gi, '');
   text = text.replace(/\bIt's just that's\b/gi, "That's");
   text = text.replace(/\bIt is just that is\b/gi, "That is");
-  return text;
+  return text.replace(/\s{2,}/g, ' ').trim();
 }
 
 function applyCompoundHyphens(text) {
@@ -330,13 +440,14 @@ function applyCompoundHyphens(text) {
     { re: /\bcommercial grade\b/gi, sub: 'commercial-grade' },
     { re: /\bthree way\b/gi, sub: 'three-way' },
     { re: /\btwo way\b/gi, sub: 'two-way' },
+    { re: /\bnon directed\b/gi, sub: 'non-directed' },
+    { re: /\bpatient donor\b/gi, sub: 'patient-donor' },
     { re: /\b20th century\b/gi, sub: '20th-century' },
     { re: /\b21st century\b/gi, sub: '21st-century' }
   ];
   compounds.forEach(function(c) { text = text.replace(c.re, c.sub); });
   return text;
 }
-
 function applyVocabCorrections(text, corrRaw) {
   if (!corrRaw || !corrRaw.trim()) return text;
   corrRaw.split('\n').forEach(function(line) {
@@ -357,7 +468,7 @@ function smartSplitRunOn(text) {
   var sentences = text.split(/(?<=[.?!])\s+/);
   var out = sentences.map(function(sent) {
     var words = sent.trim().split(/\s+/);
-    if (words.length <= 30) return sent.trim();
+    if (words.length <= 32) return sent.trim();
 
     var result = [];
     var currentChunk = [];
@@ -449,68 +560,126 @@ function parseSRT(raw) {
   });
   return { segments: segs, kind: 'srt' };
 }
-// 8 to 15-Second Sentence-Boundary Block Builder (Min 8s, Max 15s)
+
+// Split raw segments cleanly at internal sentence endings so blocks never break mid-sentence
+function explodeIntoSentenceChunks(rawSegs) {
+  var chunks = [];
+  rawSegs.forEach(function(seg, idx) {
+    var nextStart = (idx + 1 < rawSegs.length) ? rawSegs[idx + 1].start : (seg.end || seg.start + 4000);
+    if (nextStart <= seg.start) nextStart = seg.start + 3000;
+
+    // Fix missing periods before capitalized transitions in unpunctuated ASR text (e.g. "from there So" -> "from there. So")
+    var txt = seg.text
+      .replace(/([a-z0-9])\s+(So|But|And|Well|Just|The|Then|Because|However)\b/g, '$1. $2')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    var parts = txt.split(/(?<=[.?!])\s+/).filter(Boolean);
+    if (parts.length <= 1) {
+      chunks.push({ speaker: seg.speaker, start: seg.start, end: nextStart, text: txt });
+    } else {
+      var totalLen = txt.length || 1;
+      var cursor = seg.start;
+      parts.forEach(function(p, pIdx) {
+        var ratio = p.length / totalLen;
+        var dur = Math.round((nextStart - seg.start) * ratio);
+        var pEnd = (pIdx === parts.length - 1) ? nextStart : (cursor + Math.max(500, dur));
+        chunks.push({ speaker: seg.speaker, start: cursor, end: pEnd, text: p.trim() });
+        cursor = pEnd;
+      });
+    }
+  });
+  return chunks;
+}
+
+// Sentence-Aware Continuous Block Builder (Minimum 8s, never cuts mid-sentence, synced to actual audio timeline)
 function buildBlocks(parsed, cfg) {
   var rawSegs = parsed.segments.map(function(s) {
     return { speaker: s.speaker, start: s.start, end: s.end || 0, text: s.text.trim() };
   });
   if (!rawSegs.length) return [];
 
-  var blocks = [];
-  var curBlock = { speaker: rawSegs[0].speaker, start: rawSegs[0].start, end: rawSegs[0].end, text: rawSegs[0].text };
+  var audioMs = cfg.audioMs || 0;
+  var minBlockMs = cfg.minBlockMs || 8000;
+  var targetMaxMs = cfg.maxBlockMs || 15000;
+  var hardCeilingMs = Math.max(targetMaxMs + 10000, 25000);
 
-  for (var i = 1; i < rawSegs.length; i++) {
-    var cur = rawSegs[i];
+  var sentenceChunks = cfg.mergeSentences ? explodeIntoSentenceChunks(rawSegs) : rawSegs;
+  var blocks = [];
+  var curBlock = {
+    speaker: sentenceChunks[0].speaker,
+    start: sentenceChunks[0].start,
+    end: sentenceChunks[0].end,
+    text: sentenceChunks[0].text
+  };
+
+  for (var i = 1; i < sentenceChunks.length; i++) {
+    var cur = sentenceChunks[i];
     var sameSpeaker = cur.speaker === curBlock.speaker;
     var blockDuration = cur.start - curBlock.start;
-    var endsWithPunctuation = /[.?!]["']?$/.test(curBlock.text);
+    var endsWithPunctuation = /[.?!]["']?$/.test(curBlock.text.trim());
 
-    var reachedMinWindow = blockDuration >= 8000;   // Minimum 8 seconds
-    var exceededMaxWindow = blockDuration >= 15000; // Maximum 15 seconds ceiling
+    var reachedMinWindow = blockDuration >= minBlockMs;
+    var reachedTargetMax = blockDuration >= targetMaxMs;
+    var exceededHardCeiling = blockDuration >= hardCeilingMs;
 
-    if (sameSpeaker && (!reachedMinWindow || !endsWithPunctuation) && !exceededMaxWindow) {
+    // Merge if:
+    // 1. Same speaker AND we haven't reached the minimum 8s window yet, OR
+    // 2. Same speaker AND the current block is still mid-sentence (no terminal punctuation) and under the hard ceiling
+    if (sameSpeaker && (!reachedMinWindow || (!endsWithPunctuation && !exceededHardCeiling))) {
+      // Also merge one more short sentence if under targetMaxMs and total duration stays <= targetMaxMs + 2s
       curBlock.text += ' ' + cur.text;
-      if (cur.end > curBlock.end) curBlock.end = cur.end;
+      curBlock.end = Math.max(curBlock.end, cur.end);
+    } else if (sameSpeaker && endsWithPunctuation && !reachedTargetMax && ((cur.end - curBlock.start) <= targetMaxMs)) {
+      curBlock.text += ' ' + cur.text;
+      curBlock.end = Math.max(curBlock.end, cur.end);
     } else {
-      if (curBlock.end <= curBlock.start) curBlock.end = curBlock.start + 10000;
       blocks.push(curBlock);
       curBlock = { speaker: cur.speaker, start: cur.start, end: cur.end, text: cur.text };
     }
   }
   blocks.push(curBlock);
 
-  var audioMs = cfg.audioMs || 0;
-  var lastIdx = blocks.length - 1;
-
-  // Enforce continuous chained timestamps (End N = Start N+1) and randomized millisecond offset
-  for (var i = 0; i < blocks.length; i++) {
-    var b = blocks[i];
-    if (i === 0 && b.start === 0) {
-      b.start = 258; // Non-zero start for first segment
-    }
-    if (i < lastIdx) {
-      var nextB = blocks[i + 1];
-      // Ensure duration is between 8s and 15s if natural cuts permit
-      var preferredDuration = 10000 + ((i * 137) % 5000); // 10s - 15s randomized block window
-      b.end = b.start + preferredDuration;
-      if (nextB.start < b.end) {
-        nextB.start = b.end;
-      }
-    } else {
-      if (!b.end || b.end <= b.start) {
-        b.end = b.start + 12000;
-      }
-    }
+  // Determine exact final audio boundary
+  var lastRawEnd = rawSegs[rawSegs.length - 1].end || (rawSegs[rawSegs.length - 1].start + 3000);
+  var finalTargetEnd = audioMs > 0 ? audioMs : lastRawEnd;
+  if (finalTargetEnd <= blocks[blocks.length - 1].start) {
+    finalTargetEnd = blocks[blocks.length - 1].start + 3000;
   }
 
-  // Strict Audio Length Synchronization: Clamp final block end time to exact audio length
-  if (audioMs > 0 && blocks.length > 0) {
-    blocks[blocks.length - 1].end = audioMs;
+  // Enforce strict continuous chaining (End N = Start N+1) with randomized non-zero milliseconds
+  for (var j = 0; j < blocks.length; j++) {
+    var b = blocks[j];
+    if (j === 0) {
+      b.start = cfg.randomMs ? randomizeBoundaryMs(b.start, 1) : b.start;
+    } else {
+      b.start = blocks[j - 1].end;
+    }
+
+    if (j < blocks.length - 1) {
+      var nextRawStart = blocks[j + 1].start;
+      // Guarantee forward progression without pushing timestamps ahead of the audio timeline
+      var minAllowedEnd = b.start + Math.min(minBlockMs, Math.max(2000, nextRawStart - b.start));
+      var chosenEnd = Math.max(nextRawStart, minAllowedEnd);
+      if (finalTargetEnd > 0 && chosenEnd >= finalTargetEnd - 1500) {
+        chosenEnd = Math.min(nextRawStart, finalTargetEnd - 1000);
+      }
+      b.end = cfg.randomMs ? randomizeBoundaryMs(chosenEnd, j + 10) : chosenEnd;
+      if (b.end <= b.start) b.end = b.start + 1500;
+    } else {
+      b.end = cfg.randomMs ? randomizeBoundaryMs(finalTargetEnd, j + 99) : finalTargetEnd;
+      if (audioMs > 0) {
+        // Keep exact audio length seconds while preserving non-zero ms if audioMs has .000
+        var audioSecBase = Math.floor(audioMs / 1000) * 1000;
+        var audioRem = audioMs % 1000;
+        b.end = audioRem > 0 ? audioMs : (audioSecBase + (cfg.randomMs ? (113 + ((blocks.length * 197) % 750)) : 0));
+      }
+      if (b.end <= b.start) b.end = b.start + 1000;
+    }
   }
 
   return blocks;
 }
-
 function runIterativeQA(transcriptText, mode, opts) {
   var currentText = transcriptText;
   var finalIssues = [];
@@ -549,6 +718,7 @@ function runIterativeQA(transcriptText, mode, opts) {
 
       if (mode !== 'strict') {
         if (opts.noRepetitions) modifiedLine = removeWordRepetitions(modifiedLine);
+        if (opts.noShortForms) modifiedLine = expandShortForms(modifiedLine);
       }
 
       if (opts.hyphenate) {
@@ -561,8 +731,11 @@ function runIterativeQA(transcriptText, mode, opts) {
         if (beforeSplit !== modifiedLine) logs.push('Split run-on sentence cleanly at clause boundary.');
       }
 
+      // Clean double punctuation such as ",." or ".."
+      modifiedLine = modifiedLine.replace(/,\s*\./g, '.');
       modifiedLine = modifiedLine.replace(/\.{2,}/g, '.');
       modifiedLine = modifiedLine.replace(/!/g, '.');
+      modifiedLine = modifiedLine.replace(/\s+([.,?])/g, '$1');
 
       modifiedLine = modifiedLine.replace(/([.?!]\s+)([a-z])/g, function(m, p1, p2) {
         return p1 + p2.toUpperCase();
@@ -625,6 +798,10 @@ if (typeof document !== 'undefined' && document.getElementById) {
     setTimeout(function() { t.classList.remove('show'); }, 2400); 
   }
 
+  // Auto-populate today's date in DD/MM/YYYY format
+  var now = new Date();
+  $('date').value = pad(now.getDate(), 2) + '/' + pad(now.getMonth() + 1, 2) + '/' + now.getFullYear();
+
   var savedKey = localStorage.getItem('groq_api_key');
   if (savedKey) $('groqKey').value = savedKey;
 
@@ -662,7 +839,8 @@ if (typeof document !== 'undefined' && document.getElementById) {
       }
     };
   });
- $('btnTranscribe').addEventListener('click', async function() {
+
+  $('btnTranscribe').addEventListener('click', async function() {
     var apiKey = $('groqKey').value.trim();
     if (!apiKey) { toast('Enter your free Groq API key first'); return; }
     if (!selectedAudioFile) { toast('Select an audio file first'); return; }
@@ -699,13 +877,13 @@ if (typeof document !== 'undefined' && document.getElementById) {
         $('raw').value = 'Male_1\n(0:00.258) ' + (data.text || '');
       } else {
         var outLines = ['Male_1'];
-        data.segments.forEach(function(seg) {
+        data.segments.forEach(function(seg, idx) {
           var totalMs = Math.round((seg.start || 0) * 1000);
           var totalSec = Math.floor(totalMs / 1000);
           var m = Math.floor(totalSec / 60);
           var s = totalSec % 60;
-          var ms = pad(totalMs % 1000 || 258, 3);
-          outLines.push('(' + m + ':' + pad(s) + '.' + ms + ') ' + seg.text.trim());
+          var msVal = (totalMs % 1000) || (123 + ((idx * 179) % 800));
+          outLines.push('(' + m + ':' + pad(s) + '.' + pad(msVal, 3) + ') ' + seg.text.trim());
         });
         $('raw').value = outLines.join('\n');
       }
@@ -724,7 +902,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
   $('rate').addEventListener('change', function() { $('player').playbackRate = parseFloat(this.value); });
   $('player').addEventListener('timeupdate', function() {
-    $('clock').textContent = fmtTs(this.currentTime * 1000, true);
+    $('clock').textContent = fmtTs(this.currentTime * 1000);
   });
   $('btnClock').addEventListener('click', function() {
     navigator.clipboard.writeText($('clock').textContent).then(function() { toast('Timestamp copied!'); });
@@ -821,6 +999,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
       hyphenate: $('oHyphenate').checked,
       runonCheck: $('oRunonCheck').checked,
       noRepetitions: $('oNoRepetitions').checked,
+      noShortForms: $('oNoShortForms').checked,
       grammar: $('oGrammar').checked,
       corr: $('corr').value
     };
@@ -847,8 +1026,7 @@ if (typeof document !== 'undefined' && document.getElementById) {
     $('logCount').textContent = res.logs.length;
     $('log').textContent = res.logs.join('\n') || 'No manual splits required.';
   }
-
-  $('btnGo').addEventListener('click', function() {
+ $('btnGo').addEventListener('click', function() {
     if (!$('raw').value.trim()) { toast('Paste raw transcript or transcribe audio first'); return; }
     if (!$('topic').value.trim()) {
       $('topic').value = generateSevenWordTitle($('raw').value);
@@ -859,13 +1037,16 @@ if (typeof document !== 'undefined' && document.getElementById) {
     var cfg = {
       audioMs: parseAudioLength($('audio').value),
       continuous: $('oContinuous').checked,
+      randomMs: $('oRandomMs').checked,
       mergeSentences: $('oMergeSentences').checked,
-      maxBlockMs: (parseFloat($('maxBlock').value) || 0) * 1000
+      minBlockMs: Math.max(4000, (parseFloat($('minBlock').value) || 8) * 1000),
+      maxBlockMs: Math.max(8000, (parseFloat($('maxBlock').value) || 15) * 1000)
     };
     var blocks = buildBlocks(parsed, cfg);
     if (!blocks.length) { toast('No valid text blocks found'); return; }
 
-    var audioLenLabel = ($('audio').value || formatDuration(blocks[blocks.length - 1].end / 1000)).replace(/minutes/gi, '').trim();
+    var finalEndMs = blocks[blocks.length - 1].end;
+    var audioLenLabel = ($('audio').value || formatDuration(finalEndMs / 1000)).replace(/minutes/gi, '').trim();
 
     var lines = [
       'Transcription Job: ' + $('topic').value, 
@@ -878,8 +1059,10 @@ if (typeof document !== 'undefined' && document.getElementById) {
 
     blocks.forEach(function(b) {
       var spk = speakerMapping[b.speaker] || b.speaker;
-      lines.push(spk + ':\n[' + fmtTs(b.start, true) + ' --> ' + fmtTs(b.end, true) + ']\n' + b.text + '\n');
+      lines.push(spk + ':\n[' + fmtTs(b.start) + ' --> ' + fmtTs(b.end) + ']\n' + b.text + '\n');
     });
+
+    lines.push('[END OF RECORDING --> ' + fmtTs(finalEndMs) + ']');
 
     var currentMode = modeFor($('project').value, $('mode').value);
     var res = runIterativeQA(lines.join('\n'), currentMode, getQAOpts());
