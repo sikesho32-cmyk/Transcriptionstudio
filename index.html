@@ -965,31 +965,94 @@ function rebuildWithLockedTimestamps(structure, polishedTexts) {
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-async function callGroqAgent(apiKey, systemPrompt, userPrompt) {
-  var resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + apiKey,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'openai/gpt-oss-120b',
-      temperature: 0.15,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ]
-    })
-  });
-  if (!resp.ok) {
-    var errBody = await resp.text();
-    throw new Error('Groq API ' + resp.status + ': ' + errBody.slice(0, 140));
+ function getGroqKeysList(rawInput) {
+  var source = (typeof rawInput === 'string' && rawInput.trim())
+    ? rawInput
+    : (localStorage.getItem('groq_api_keys') || localStorage.getItem('groq_api_key') || '');
+
+  return source
+    .split(/[\s,;]+/)
+    .map(function(k) { return k.trim(); })
+    .filter(function(k) { return k.length > 0; });
+}
+
+function safeParseAgentJson(rawContent) {
+  var text = String(rawContent || '').trim();
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    var firstBrace = text.indexOf('{');
+    var lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      return JSON.parse(text.slice(firstBrace, lastBrace + 1));
+    }
+    throw new Error('Model output was not valid JSON');
   }
-  var data = await resp.json();
-  var content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-  if (!content) throw new Error('Empty response from Groq AI');
-  return JSON.parse(content);
+}
+
+async function callGroqAgent(apiKey, systemPrompt, userPrompt) {
+  var keys = getGroqKeysList(apiKey);
+  if (!keys.length) {
+    throw new Error('Please enter at least one Groq API key in Step 1.');
+  }
+
+  var lastError = null;
+
+  for (var i = 0; i < keys.length; i++) {
+    var currentKey = keys[i];
+
+    try {
+      var resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + currentKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          temperature: 0.1,
+          max_tokens: 8192,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        })
+      });
+
+      if (!resp.ok) {
+        var errBody = await resp.text();
+        var err = new Error('Groq API ' + resp.status + ' (Key #' + (i + 1) + '): ' + errBody.slice(0, 160));
+        err.status = resp.status;
+        throw err;
+      }
+
+      var data = await resp.json();
+      var content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (!content) {
+        throw new Error('Empty response from Groq AI');
+      }
+
+      var parsed = safeParseAgentJson(content);
+
+      if (i > 0) {
+        var reordered = [currentKey].concat(keys.filter(function(_, idx) { return idx !== i; }));
+        localStorage.setItem('groq_api_keys', reordered.join('\n'));
+      }
+
+      return parsed;
+    } catch (e) {
+      lastError = e;
+      if (i < keys.length - 1) {
+        await new Promise(function(resolve) { setTimeout(resolve, 500); });
+        continue;
+      }
+    }
+  }
+
+  throw lastError || new Error('All Groq API keys failed.');
   }
   
 function buildEagleWebSystemPrompt(mode, homophoneHints) {
