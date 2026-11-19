@@ -992,6 +992,116 @@ async function callGroqAgent(apiKey, systemPrompt, userPrompt) {
   return JSON.parse(content);
   }
   
+function buildEagleWebSystemPrompt(mode, homophoneHints) {
+  var isClean = (mode !== 'strict' && mode !== 'verbatim');
+  var hintsLine = (homophoneHints && homophoneHints.trim())
+    ? '\nHomophone / Context Hints from transcriber: ' + homophoneHints.trim()
+    : '';
+
+  return [
+    'You are an Eagle Web Commerce transcription quality & compliance editor.',
+    'You will receive an array of numbered transcript blocks: [{"index": 0, "speaker": "Male_1", "text": "..."}, ...].',
+    'Return ONLY a valid JSON object with this exact shape:',
+    '{"polished_texts": ["..."], "violations_found": ["..."], "summary": "..."}',
+    'The length of "polished_texts" MUST equal the number of input blocks.',
+    '',
+    'CRITICAL INTEGRITY RULES:',
+    '- NEVER summarize, paraphrase, condense, or invent words.',
+    '- NEVER alter timestamps, speaker labels, or block ordering (timestamps are locked outside your text).',
+    '- Do NOT fix natural grammar errors unless required by the selected mode, and keep original speaker wording where possible.',
+    '- Use US spelling by default: email (not e-mail), all right (not alright), okay (not O.K.), yeah (not yep/yup), y\'all (not ya\'ll), I\'m (not Am), TV / US / UK (not T.V. / U.S. / U.K.).',
+    '- Remove accent marks / special characters not on a standard keyboard (e.g., fiance not fiancé, El Nino not El Niño).',
+    '- NEVER use exclamation marks (!) except in established brand names like Yahoo!.',
+    '- NEVER use ellipses (...).',
+    '- Use the Oxford comma in lists of three or more items (e.g., apples, pears, and blueberries).',
+    '- Do NOT place a comma right after "So" at the start of a sentence (e.g., "So what do you think?").',
+    '- Keep contractions/expansions as spoken (e.g., if spoken as "don\'t", keep "don\'t"; if spoken as "cannot", keep "cannot").',
+    '- Numbers: spell out 0-9 in regular text (zero..nine); use digits for 10+ (10, 47, 126), thousands with commas (2,000), years (1970, \'70s), percentages (4%), decimals (3.5), and 0-9 vs 10+ rules for millions/billions/trillions and currency ($15 vs two dollars; 33 cents). Spell out numbers/ordinals/ranges at the start of a sentence unless a year or decimal/equation.',
+    '',
+    isClean
+      ? [
+          'MODE = CLEAN READ:',
+          '- Remove stutters, false starts, partial words, repetitions, and non-meaningful filler words (um, uh-huh, like, you know, sort of, kind of when used as filler).',
+          '- Keep words like "like", "kind of", "So", or "And" when they carry meaning or logical connection.',
+          '- Do NOT use dashes for stutters/false starts in Clean Read; output clean, smooth sentences.'
+        ].join('\n')
+      : [
+          'MODE = VERBATIM:',
+          '- Preserve spoken dialogue, fillers, slang, and repetitions as spoken.',
+          '- Use a single dash (-) for stutters, partial words, and false starts (e.g., I- I- I\'m, fr-, for-).',
+          '- Place commas around filler words when present (e.g., They went, um, to the store.).'
+        ].join('\n'),
+    hintsLine
+  ].join('\n');
+}
+
+async function runIterativeEagleAgent(options) {
+  var rawText = options.rawText || '';
+  var apiKey = options.apiKey || '';
+  var mode = options.mode || 'clean';
+  var maxPasses = Math.max(1, Math.min(4, parseInt(options.maxPasses || '2', 10) || 2));
+  var homophoneHints = options.homophoneHints || '';
+  var onProgress = options.onProgress || function() {};
+
+  var structure = extractLockedBlocks(rawText);
+  if (!structure.blocks || !structure.blocks.length) {
+    throw new Error('No timestamped blocks found to process.');
+  }
+
+  var currentTexts = structure.blocks.map(function(b) { return b.text; });
+  var systemPrompt = buildEagleWebSystemPrompt(mode, homophoneHints);
+  var allNotes = [];
+
+  for (var pass = 1; pass <= maxPasses; pass++) {
+    onProgress('Pass ' + pass + ' of ' + maxPasses + ': scanning and aligning with Eagle Web rules...');
+
+    var payloadBlocks = structure.blocks.map(function(b, idx) {
+      return {
+        index: idx,
+        speaker: b.speaker,
+        text: currentTexts[idx]
+      };
+    });
+
+    var userPrompt = JSON.stringify({
+      pass: pass,
+      max_passes: maxPasses,
+      mode: mode,
+      prior_violations: pass > 1 ? allNotes.slice(-15) : [],
+      blocks: payloadBlocks
+    });
+
+    var result = await callGroqAgent(apiKey, systemPrompt, userPrompt);
+    var nextTexts = Array.isArray(result && result.polished_texts) ? result.polished_texts : null;
+
+    if (!nextTexts || nextTexts.length !== structure.blocks.length) {
+      throw new Error('AI returned mismatched block count on pass ' + pass + '.');
+    }
+
+    currentTexts = nextTexts.map(function(t, idx) {
+      var cleaned = typeof t === 'string' ? t.trim() : structure.blocks[idx].text;
+      cleaned = cleaned.replace(/^[A-Za-z0-9_]+:\s*\n?/, '');
+      cleaned = cleaned.replace(/\.\.\./g, '.');
+      cleaned = cleaned.replace(/(?<!Yahoo)!/g, '.');
+      return cleaned.trim();
+    });
+
+    var violations = Array.isArray(result && result.violations_found) ? result.violations_found : [];
+    allNotes = violations.map(function(v) { return 'Pass ' + pass + ': ' + String(v); });
+
+    if (violations.length === 0) {
+      onProgress('Pass ' + pass + ': all scanned rules aligned with 0 remaining violations.');
+      break;
+    }
+  }
+
+  var finalText = rebuildWithLockedTimestamps(structure, currentTexts);
+  return {
+    text: finalText,
+    notes: allNotes
+  };
+  }
+                     
 function generateQAAuditTable(transcriptText, mode) {
   var checks = [
     { rule: "Clean Read / Verbatim Compliance", desc: (mode === 'strict' ? "Verbatim mode: all fillers & repetitions included." : "Clean Read mode: stutters, fillers, and false starts omitted."), status: "Passed", action: "Maintained house style standards." },
@@ -1039,6 +1149,82 @@ if (typeof document !== 'undefined' && document.getElementById) {
   $('mode').addEventListener('change', updateModeBadge);
   updateModeBadge();
 
+  if ($('btnAiRun')) {
+  $('btnAiRun').addEventListener('click', async function() {
+    var btn = $('btnAiRun');
+    var statusEl = $('aiAgentStatus');
+    var badgeEl = $('aiReadyBadge');
+    var notesEl = $('aiAuditNotes');
+    var outBox = $('out') || $('transcriptOut') || $('output');
+
+    var rawText = outBox ? outBox.value : '';
+    if (!rawText || !rawText.trim()) {
+      toast('Generate or paste a transcript first.');
+      return;
+    }
+
+    var apiKey = ($('groqKey') && $('groqKey').value.trim())
+      || localStorage.getItem('groq_api_keys')
+      || localStorage.getItem('groq_api_key')
+      || '';
+
+    var mode = ($('mode') && $('mode').value) || 'clean';
+    var maxPasses = ($('aiPasses') && $('aiPasses').value) || '2';
+    var homophoneHints = ($('aiHomophoneNotes') && $('aiHomophoneNotes').value) || '';
+
+    btn.disabled = true;
+    if (badgeEl) {
+      badgeEl.textContent = 'Scanning & Polishing';
+      badgeEl.className = 'ai-status-pill warn';
+    }
+    if (notesEl) notesEl.innerHTML = '';
+
+    try {
+      var res = await runIterativeEagleAgent({
+        rawText: rawText,
+        apiKey: apiKey,
+        mode: mode,
+        maxPasses: maxPasses,
+        homophoneHints: homophoneHints,
+        onProgress: function(msg) {
+          if (statusEl) statusEl.textContent = msg;
+        }
+      });
+
+      if (outBox) outBox.value = res.text;
+
+      if (typeof runIterativeQA === 'function') {
+        runIterativeQA();
+      }
+
+      if (badgeEl) {
+        badgeEl.textContent = 'Ready to Submit';
+        badgeEl.className = 'ai-status-pill ready';
+      }
+      if (statusEl) {
+        statusEl.textContent = 'Completed iterative Eagle Web scan & alignment with locked timestamps.';
+      }
+      if (notesEl && res.notes && res.notes.length) {
+        notesEl.innerHTML = res.notes.map(function(n) {
+          return '<li>' + String(n).replace(/</g, '&lt;') + '</li>';
+        }).join('');
+      }
+      toast('AI Clean-Read & QA scan complete!');
+    } catch (err) {
+      if (badgeEl) {
+        badgeEl.textContent = 'Agent Error';
+        badgeEl.className = 'ai-status-pill warn';
+      }
+      if (statusEl) {
+        statusEl.textContent = 'Error: ' + (err && err.message ? err.message : String(err));
+      }
+      toast('AI Agent error: ' + (err && err.message ? err.message : 'Check console'));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+    }
+    
   $('topic').addEventListener('input', function() {
     var wc = this.value.trim() ? this.value.trim().split(/\s+/).length : 0;
     $('topicHint').textContent = wc + ' words' + (wc === 7 ? ' (Exact match!)' : ' (Target: 7 words)');
