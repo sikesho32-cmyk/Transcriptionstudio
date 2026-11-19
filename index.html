@@ -939,7 +939,7 @@ function extractLockedBlocks(text) {
       }
       current = { index: blocks.length, speaker: prevSpeaker, tsLine: trimmed, text: '' };
     } else if (current) {
-      current.text += (current.text ? '\n' : '') + rawLine;
+            if (!/^[A-Za-z0-9_]+:$/.test(trimmed)) current.text += (current.text ? '\n' : '') + rawLine;
     } else {
       headerLines.push(rawLine);
     }
