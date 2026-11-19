@@ -199,6 +199,45 @@ table.guide-table tr:nth-child(even) td { background-color: #fafcff; }
       </div>
     </section>
 
+    <style>
+.ai-agent-box { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: 14px; margin-top: 12px; }
+.ai-agent-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ai-status-pill { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--card); color: var(--accent); border: 1px solid var(--line); }
+.ai-status-pill.ready { background: var(--ok); color: #ffffff; border-color: var(--ok); }
+.ai-status-pill.warn { background: var(--warn); color: #ffffff; border-color: var(--warn); }
+.ai-audit-list { margin-top: 10px; padding-left: 18px; font-size: 13px; display: grid; gap: 4px; }
+</style>
+
+<section class="card span2" id="card-ai-agent">
+  <div class="ai-agent-head">
+    <h2 style="margin:0;"><span class="n">AI</span>Eagle Web Clean-Read & Anti-Rejection Agent</h2>
+    <span class="ai-status-pill" id="aiReadyBadge">Pending Audit</span>
+  </div>
+  <p class="sub">Uses <strong>llama-3.3-70b-versatile</strong> via your Groq API key to clean stutters/fillers, enforce Eagle Web rules, generate a 7-word title, and strictly lock all <code>[00:00:00.123 --> 00:00:15.151]</code> timestamps.</p>
+
+  <div class="row two">
+    <div>
+      <label for="aiPasses">Max AI Polish & Audit Passes</label>
+      <select id="aiPasses">
+        <option value="2" selected>2 Passes (Fast & Thorough)</option>
+        <option value="3">3 Passes (Deep Audit)</option>
+        <option value="1">1 Pass (Quick Clean)</option>
+      </select>
+    </div>
+    <div>
+      <label for="aiHomophoneNotes">Homophone / Context Hints (Optional)</label>
+      <input type="text" id="aiHomophoneNotes" placeholder="e.g. expose not extort, call not block" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="btns">
+    <button type="button" id="btnAiRun" class="primary big">🤖 Run AI Clean-Read, Title & Anti-Rejection QA</button>
+    <button type="button" id="btnAiTitleOnly">🏷️ Generate 7-Word Title Only</button>
+  </div>
+  <div class="hint" id="aiAgentStatus">Ready when Step 1 Groq key and transcript text are present.</div>
+  <ul class="ai-audit-list" id="aiAuditNotes"></ul>
+</section>
+    
     <section class="card span2" id="card-out">
       <h2><span class="n">5</span>Output & QA validation</h2>
       <p class="sub">Review formatted transcript output, QA compliance, and download options.</p>
@@ -864,7 +903,95 @@ function runIterativeQA(transcriptText, mode, opts) {
 
   return { correctedText: currentText, issues: finalIssues, sentenceCount: sentenceCount, errorCount: errorCount, logs: logs };
 }
+  
+var TS_LINE_RE = /^\[(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})\]$/;
+var END_TAG_RE = /^\[END OF RECORDING\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})\]$/;
 
+function extractLockedBlocks(text) {
+  var lines = (text || '').replace(/\r/g, '').split('\n');
+  var blocks = [];
+  var current = null;
+  var headerLines = [];
+  var endTag = '';
+
+  for (var i = 0; i < lines.length; i++) {
+    var rawLine = lines[i];
+    var trimmed = rawLine.trim();
+    if (END_TAG_RE.test(trimmed)) {
+      if (current) { blocks.push(current); current = null; }
+      endTag = trimmed;
+      continue;
+    }
+    if (TS_LINE_RE.test(trimmed)) {
+      if (current) blocks.push(current);
+      var prevSpeaker = 'Male_1';
+      for (var k = blocks.length === 0 ? i - 1 : i - 1; k >= 0; k--) {
+        var prevT = lines[k].trim();
+        if (!prevT || TS_LINE_RE.test(prevT) || END_TAG_RE.test(prevT)) break;
+        if (/^[A-Za-z0-9_]+:$/.test(prevT)) {
+          prevSpeaker = prevT.slice(0, -1);
+          if (blocks.length === 0) {
+            var idxInHeader = headerLines.lastIndexOf(prevT);
+            if (idxInHeader > -1) headerLines.splice(idxInHeader, 1);
+          }
+          break;
+        }
+      }
+      current = { index: blocks.length, speaker: prevSpeaker, tsLine: trimmed, text: '' };
+    } else if (current) {
+      current.text += (current.text ? '\n' : '') + rawLine;
+    } else {
+      headerLines.push(rawLine);
+    }
+  }
+  if (current) blocks.push(current);
+  return { headerLines: headerLines, blocks: blocks, endTag: endTag };
+}
+
+function rebuildWithLockedTimestamps(structure, polishedTexts) {
+  var out = structure.headerLines.slice();
+  while (out.length && out[out.length - 1].trim() === '') out.pop();
+  if (out.length) out.push('');
+
+  structure.blocks.forEach(function(blk, idx) {
+    var cleanBody = (polishedTexts[idx] !== undefined ? String(polishedTexts[idx]) : blk.text).trim();
+    out.push(blk.speaker + ':');
+    out.push(blk.tsLine);
+    out.push(cleanBody);
+    out.push('');
+  });
+
+  if (structure.endTag) out.push(structure.endTag);
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+async function callGroqAgent(apiKey, systemPrompt, userPrompt) {
+  var resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + apiKey,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.15,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ]
+    })
+  });
+  if (!resp.ok) {
+    var errBody = await resp.text();
+    throw new Error('Groq API ' + resp.status + ': ' + errBody.slice(0, 140));
+  }
+  var data = await resp.json();
+  var content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  if (!content) throw new Error('Empty response from llama-3.3-70b-versatile');
+  return JSON.parse(content);
+  }
+  
 function generateQAAuditTable(transcriptText, mode) {
   var checks = [
     { rule: "Clean Read / Verbatim Compliance", desc: (mode === 'strict' ? "Verbatim mode: all fillers & repetitions included." : "Clean Read mode: stutters, fillers, and false starts omitted."), status: "Passed", action: "Maintained house style standards." },
@@ -1165,6 +1292,142 @@ if (typeof document !== 'undefined' && document.getElementById) {
     renderQA(res);
     $('qaTableContainer').innerHTML = generateQAAuditTable(res.correctedText, currentMode);
     toast('Transcript generated & audited to Eagle Web standards!');
+  });
+    function setAiBadge(text, stateClass) {
+    var badge = $('aiReadyBadge');
+    if (!badge) return;
+    badge.textContent = text;
+    badge.className = 'ai-status-pill' + (stateClass ? ' ' + stateClass : '');
+  }
+
+  function renderAiNotes(notes) {
+    var ul = $('aiAuditNotes');
+    if (!ul) return;
+    ul.innerHTML = (notes || []).map(function(n) {
+      return '<li>' + esc(n) + '</li>';
+    }).join('');
+  }
+
+  $('btnAiTitleOnly').addEventListener('click', async function() {
+    var apiKey = ($('groqKey') && $('groqKey').value || '').trim();
+    var sourceText = ($('out') && $('out').value.trim()) || ($('raw') && $('raw').value.trim()) || '';
+    if (!apiKey) { toast('Save your Groq API key in Step 1 first'); return; }
+    if (!sourceText) { toast('Add transcript text first'); return; }
+
+    var btn = $('btnAiTitleOnly');
+    btn.disabled = true;
+    $('aiAgentStatus').textContent = 'Generating 7-word title via llama-3.3-70b-versatile...';
+    try {
+      var res = await callGroqAgent(
+        apiKey,
+        'You return ONLY valid JSON: {"title_seven_words":"..."}. The title must be strictly 7 words, title-cased, accurate to the transcript, with no punctuation at the end.',
+        sourceText.slice(0, 4000)
+      );
+      if (res.title_seven_words) {
+        var wc = res.title_seven_words.trim().split(/\s+/).length;
+        $('topic').value = res.title_seven_words.trim();
+        $('topic').dispatchEvent(new Event('input'));
+        if ($('out').value.trim()) {
+          $('out').value = $('out').value.replace(/^Transcription Job:.*$/m, 'Transcription Job: ' + $('topic').value);
+        }
+        $('aiAgentStatus').textContent = 'Title updated (' + wc + ' words).';
+        toast('7-word title generated!');
+      }
+    } catch (e) {
+      $('aiAgentStatus').textContent = 'Title error: ' + e.message;
+      toast('Title generation failed');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('btnAiRun').addEventListener('click', async function() {
+    var apiKey = ($('groqKey') && $('groqKey').value || '').trim();
+    var workingText = ($('out') && $('out').value.trim()) || '';
+    if (!workingText && $('raw') && $('raw').value.trim()) {
+      $('btnGo').click();
+      workingText = $('out').value.trim();
+    }
+    if (!apiKey) { toast('Save your Groq API key in Step 1 first'); return; }
+    if (!workingText) { toast('Generate or paste a transcript first'); return; }
+
+    var currentMode = modeFor($('project').value, $('mode').value);
+    var passes = parseInt(($('aiPasses') && $('aiPasses').value) || '2', 10);
+    var homophoneHints = ($('aiHomophoneNotes') && $('aiHomophoneNotes').value.trim()) || '';
+    var btn = $('btnAiRun');
+    btn.disabled = true;
+    setAiBadge('Auditing...', 'warn');
+    renderAiNotes([]);
+
+    var allNotes = [];
+    try {
+      for (var p = 1; p <= passes; p++) {
+        $('aiAgentStatus').textContent = 'Running AI Anti-Rejection Pass ' + p + ' of ' + passes + ' (timestamps locked)...';
+        var locked = extractLockedBlocks(workingText);
+        if (!locked.blocks.length) throw new Error('No timestamped blocks found to lock.');
+
+        var payloadBlocks = locked.blocks.map(function(b) {
+          return { id: b.index, text: b.text };
+        });
+
+        var sysMsg = [
+          'You are an Eagle Web transcription QA & Clean-Read agent.',
+          'Mode: ' + (currentMode === 'strict' ? 'STRICT VERBATIM (keep exact words/fillers/stutters)' : 'CLEAN READ (remove stutters, false starts, and conversational fillers like "you know", "sort of", "kind of" when filler, while preserving exact meaning and never summarizing or inventing words cut off at the end).'),
+          'Eagle Web rules: keep contractions as spoken (do not expand don\'t/I\'m/you\'re); 0-9 as words (outside math/time/dates), 10+ as digits (e.g. "10 years ago"); US spelling; no exclamation marks (except brand names) and no "..."; proper capitalization and terminal punctuation.',
+          homophoneHints ? ('Homophone/context guidance: ' + homophoneHints) : '',
+          'Return ONLY valid JSON: {"title_seven_words":"7 word title here","blocks":[{"id":0,"text":"..."}],"audit_notes":["..."],"ready_to_submit":true}'
+        ].filter(Boolean).join('\n');
+
+        var aiResult = await callGroqAgent(
+          apiKey,
+          sysMsg,
+          JSON.stringify({ current_title: $('topic').value, blocks: payloadBlocks })
+        );
+
+        var nextTexts = locked.blocks.map(function(b) { return b.text; });
+        if (Array.isArray(aiResult.blocks)) {
+          aiResult.blocks.forEach(function(item) {
+            if (item && typeof item.id === 'number' && nextTexts[item.id] !== undefined && typeof item.text === 'string') {
+              nextTexts[item.id] = item.text.trim();
+            }
+          });
+        }
+
+        workingText = rebuildWithLockedTimestamps(locked, nextTexts);
+        if (aiResult.title_seven_words && aiResult.title_seven_words.trim().split(/\s+/).length === 7) {
+          $('topic').value = aiResult.title_seven_words.trim();
+          $('topic').dispatchEvent(new Event('input'));
+          workingText = workingText.replace(/^Transcription Job:.*$/m, 'Transcription Job: ' + $('topic').value);
+        }
+        if (Array.isArray(aiResult.audit_notes)) {
+          aiResult.audit_notes.forEach(function(n) {
+            if (allNotes.indexOf(n) === -1) allNotes.push('Pass ' + p + ': ' + n);
+          });
+        }
+      }
+
+      var localQa = runIterativeQA(workingText, currentMode, getQAOpts());
+      $('out').value = localQa.correctedText;
+      renderQA(localQa);
+      $('qaTableContainer').innerHTML = generateQAAuditTable(localQa.correctedText, currentMode);
+      renderAiNotes(allNotes.length ? allNotes : ['All timestamp blocks locked and verified against Eagle Web rules.']);
+
+      if (localQa.errorCount === 0) {
+        setAiBadge('Ready to Submit', 'ready');
+        $('aiAgentStatus').textContent = 'AI polish & Eagle Web QA complete. Timestamps strictly locked; ready to submit.';
+        toast('AI Clean-Read & QA complete — Ready to Submit!');
+      } else {
+        setAiBadge('Review Needed (' + localQa.errorCount + ')', 'warn');
+        $('aiAgentStatus').textContent = 'Completed with ' + localQa.errorCount + ' QA item(s) flagged above.';
+      }
+    } catch (err) {
+      console.error(err);
+      setAiBadge('Agent Error', 'warn');
+      $('aiAgentStatus').textContent = 'Error: ' + err.message;
+      toast('AI Agent error — check Groq key or connection');
+    } finally {
+      btn.disabled = false;
+    }
   });
 })();
 }
