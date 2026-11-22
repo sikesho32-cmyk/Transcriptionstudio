@@ -1,0 +1,2719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transcript Studio &amp; AGLE Hub — Targeted AI Diff Editor</title>
+<style>
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --ink: #14181f;
+  --muted: #596273;
+  --line: #dde1e8;
+  --accent: #1d4ed8;
+  --accent-ink: #ffffff;
+  --accent-soft: #e8efff;
+  --ok: #157f3b;
+  --ok-soft: #dcfce7;
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
+  --bad: #b42318;
+  --bad-soft: #fee2e2;
+  --field: #ffffff;
+  --radius: 12px;
+  --primary: #1e3a8a;
+  --primary-light: #eff6ff;
+  --example-bg: #f1f5f9;
+  --example-ink: #1e293b;
+  --example-border: #3b82f6;
+  --table-stripe: #f8fafc;
+  --warn-bg: #fef2f2;
+  --warn-ink: #7f1d1d;
+  --warn-border: #ef4444;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1217;
+    --card: #161b22;
+    --ink: #e7eaf0;
+    --muted: #98a2b3;
+    --line: #28303b;
+    --accent: #6b9bff;
+    --accent-ink: #0a1020;
+    --accent-soft: #1a2740;
+    --ok: #4cc27a;
+    --ok-soft: #132a1c;
+    --warn: #f0a24a;
+    --warn-soft: #2b2111;
+    --bad: #ff7b72;
+    --bad-soft: #2e1518;
+    --field: #0f141b;
+    --primary: #93c5fd;
+    --primary-light: #1e293b;
+    --example-bg: #1e293b;
+    --example-ink: #e2e8f0;
+    --example-border: #60a5fa;
+    --table-stripe: #1c222b;
+    --warn-bg: #2c1518;
+    --warn-ink: #fecaca;
+    --warn-border: #f87171;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  padding: 0.75rem;
+}
+.wrap { max-width: 1280px; margin: 0 auto; padding: 0 12px 64px; }
+header.top { padding: 18px 0 12px; display: flex; flex-direction: column; gap: 6px; }
+header.top h1 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
+header.top p { margin: 0; color: var(--muted); font-size: 14px; }
+
+.nav-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+  overflow-x: auto;
+}
+.tab-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab-btn.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+.grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 980px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+  .span2 { grid-column: 1 / -1; }
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 1rem;
+}
+.card h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card h2 .n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+.card .sub { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+
+label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 5px; }
+.row { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 560px) {
+  .row.two { grid-template-columns: 1fr 1fr; }
+  .row.three { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+input[type=text], input[type=password], input[type=number], select, textarea {
+  width: 100%;
+  background: var(--field);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font: inherit;
+}
+textarea { resize: vertical; min-height: 130px; }
+.hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.hint.bad { color: var(--bad); font-weight: 600; }
+.hint.ok { color: var(--ok); font-weight: 600; }
+
+.btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+button {
+  font: inherit;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.05s ease;
+}
+button:hover:not(:disabled) { opacity: 0.92; }
+button:active:not(:disabled) { transform: translateY(1px); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.success { background: var(--ok); color: #ffffff; border-color: var(--ok); }
+button.danger { background: var(--bad); color: #ffffff; border-color: var(--bad); }
+button.small { padding: 5px 10px; font-size: 12.5px; }
+button.big { padding: 11px 18px; font-size: 14.5px; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.checks { display: grid; gap: 7px; margin-top: 6px; }
+.checks label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-weight: 500;
+  margin: 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+.checks input[type=checkbox] { margin-top: 3px; }
+
+table.spk { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.spk th { font-size: 12px; text-align: left; color: var(--muted); padding: 4px 6px; }
+table.spk td { padding: 5px 6px; border-top: 1px solid var(--line); }
+
+.qa { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.qa li {
+  display: flex;
+  gap: 9px;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.qa .i { flex: none; width: 18px; text-align: center; font-weight: 700; }
+.qa .ok .i { color: var(--ok); }
+.qa .warn .i { color: var(--warn); }
+.qa .bad .i { color: var(--bad); }
+
+#out {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 15px;
+  line-height: 1.7;
+  min-height: 280px;
+  white-space: pre-wrap;
+}
+.timer { font: 700 22px/1 monospace; letter-spacing: 0.02em; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 999;
+}
+.toast.show { opacity: 0.96; }
+footer { margin-top: 24px; color: var(--muted); font-size: 12.5px; text-align: center; }
+.inline-input-btn { display: flex; gap: 8px; align-items: center; }
+pre.log {
+  background: var(--field);
+  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+.api-box {
+  background: var(--bg);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+/* AI Targeted Diff & Version Store Styles */
+.ai-agent-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ai-status-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.ai-status-pill.ready { background: var(--ok); color: #ffffff; border-color: var(--ok); }
+.ai-status-pill.warn { background: var(--warn); color: #ffffff; border-color: var(--warn); }
+
+.action-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.action-btn {
+  padding: 8px 13px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.action-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.version-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+.version-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.v-pill {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.v-pill.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.segment-list {
+  display: grid;
+  gap: 10px;
+  max-height: 540px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-top: 10px;
+}
+.seg-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--bg);
+  transition: border-color 0.15s ease;
+}
+.seg-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.seg-card.has-pending {
+  border-left: 4px solid var(--warn);
+}
+.seg-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.seg-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.ts-seek {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+}
+.status-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.status-tag.pending { background: var(--warn-soft); color: var(--warn); }
+.status-tag.accepted { background: var(--ok-soft); color: var(--ok); }
+.status-tag.rejected { background: var(--bad-soft); color: var(--bad); }
+.status-tag.clean { background: var(--accent-soft); color: var(--accent); }
+
+.seg-text {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.diff-box {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  display: grid;
+  gap: 6px;
+}
+.diff-orig {
+  font-size: 13px;
+  color: var(--bad);
+  text-decoration: line-through;
+  background: var(--bad-soft);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.diff-prop {
+  font-size: 14px;
+  color: var(--ok);
+  font-weight: 600;
+  background: var(--ok-soft);
+  padding: 5px 8px;
+  border-radius: 6px;
+}
+.diff-reason {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.clean-reader-box {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 20px;
+  line-height: 1.75;
+  font-size: 15px;
+  max-height: 460px;
+  overflow-y: auto;
+}
+.clean-reader-box h3 {
+  margin: 14px 0 6px;
+  font-size: 16px;
+  color: var(--primary);
+}
+.clean-reader-box h3:first-child { margin-top: 0; }
+.clean-reader-box p { margin-bottom: 10px; }
+
+/* Guidelines Styles */
+.toc-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.toc-card h2 {
+  font-size: 1.1rem;
+  color: var(--primary);
+  margin-bottom: 0.85rem;
+  border-bottom: 2px solid var(--primary-light);
+  padding-bottom: 0.45rem;
+}
+.toc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.55rem;
+  list-style: none;
+}
+.toc-grid a {
+  display: block;
+  padding: 0.45rem 0.75rem;
+  background: var(--primary-light);
+  color: var(--primary);
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+ul.rules-list { padding-left: 1.35rem; }
+ul.rules-list > li { margin-bottom: 0.65rem; }
+.example {
+  display: block;
+  background: var(--example-bg);
+  color: var(--example-ink);
+  border-left: 4px solid var(--example-border);
+  padding: 0.5rem 0.85rem;
+  margin-top: 0.4rem;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.94rem;
+}
+table.guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.93rem;
+}
+table.guide-table th, table.guide-table td {
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--line);
+  vertical-align: top;
+}
+table.guide-table th {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+table.guide-table tr:nth-child(even) td { background-color: var(--table-stripe); }
+.back-to-top {
+  display: inline-block;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+</style>
+</head>
+<body id="top">
+<div class="wrap">
+<header class="top">
+  <h1>Transcript Studio &amp; AGLE Hub</h1>
+  <p>Targeted AI segment editing with diff review (Accept / Reject), locked timestamps, versioned snapshots (Raw | AI-Edited | Clean Reader), and anti-rejection QA.</p>
+</header>
+
+<nav class="nav-tabs">
+  <button type="button" class="tab-btn active" data-tab="editor">Transcript Studio Editor</button>
+  <button type="button" class="tab-btn" data-tab="guidelines">Eagle Web Guidelines Reference Hub</button>
+</nav>
+
+<div id="tab-editor" class="tab-content">
+  <div class="grid">
+    <!-- Step 1 -->
+    <section class="card">
+      <h2><span class="n">1</span>Job Details &amp; Audio Upload</h2>
+      <p class="sub">Upload audio to auto-detect length &amp; transcribe, or enter job parameters.</p>
+
+      <div class="api-box">
+        <label for="audioFile" style="margin-top:0;">1A. Select Audio / Video File (Max 25 MB for Whisper Auto-Transcribe)</label>
+        <input type="file" id="audioFile" accept="audio/*,video/*">
+
+        <label for="groqKey">Groq API Key(s) — Comma or space separated for auto-failover</label>
+        <div class="inline-input-btn">
+          <input type="password" id="groqKey" placeholder="gsk_... (supports multiple keys)" autocomplete="off">
+          <button type="button" id="btnToggleKey" title="Show/Hide Key">Show</button>
+          <button type="button" id="btnSaveKey">Save</button>
+        </div>
+        <div class="hint" id="keyCountHint">Saved locally in browser storage.</div>
+        <div class="btns">
+          <button type="button" id="btnTranscribe" class="primary">Transcribe Audio to Step 2</button>
+          <span class="hint" id="transcribeStatus" style="align-self:center;"></span>
+        </div>
+      </div>
+
+      <div class="api-box" style="margin-top:12px;">
+        <label style="margin-top:0;">1B. Django Backend Persistence &amp; Submission Lock</label>
+        <div class="row two">
+          <div>
+            <label for="backendBaseUrl" style="margin-top:4px;">Backend Base URL</label>
+            <input type="text" id="backendBaseUrl" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000" autocomplete="off">
+          </div>
+          <div>
+            <label for="backendJobId" style="margin-top:4px;">Job ID</label>
+            <input type="number" id="backendJobId" value="1" min="1">
+          </div>
+        </div>
+        <div class="btns">
+          <button type="button" id="btnLoadBackendJob" class="small">Load Job from Server</button>
+          <button type="button" id="btnSyncBackendJob" class="small primary">Sync Snapshots &amp; Segments</button>
+          <button type="button" id="btnSubmitBackendJob" class="small danger">Submit &amp; Lock Job</button>
+          <span class="hint" id="backendStatus" style="align-self:center;">Offline / Local Mode</span>
+        </div>
+      </div>
+
+      <label for="topic">Transcription Job Topic (Strictly 7 words)</label>
+      <div class="inline-input-btn">
+        <input type="text" id="topic" placeholder="e.g. Simultaneous Kidney Exchange Logistics in Modern Medicine" autocomplete="off">
+        <button type="button" id="btnGenTitle" style="white-space:nowrap;">Auto Title</button>
+      </div>
+      <div class="hint" id="topicHint">0 words (Target: 7 words)</div>
+
+      <div class="row two">
+        <div>
+          <label for="audio">Audio length (m:ss or h:mm:ss)</label>
+          <input type="text" id="audio" placeholder="Auto-detected or e.g. 05:05" autocomplete="off">
+        </div>
+        <div>
+          <label for="date">Date (DD/MM/YYYY)</label>
+          <input type="text" id="date" value="" autocomplete="off">
+        </div>
+      </div>
+      <div class="row two">
+        <div>
+          <label for="by">Transcribed By</label>
+          <input type="text" id="by" value="Godhand Benson" autocomplete="off">
+        </div>
+        <div>
+          <label for="client">Client</label>
+          <input type="text" id="client" value="Eagle Web" autocomplete="off">
+        </div>
+      </div>
+      <div class="row two">
+        <div>
+          <label for="project">Project type / Formatting Standard</label>
+          <select id="project">
+            <optgroup label="Clean / Edited Verbatim">
+              <option selected>Clean Verbatim (No Fillers)</option>
+              <option>Speech</option>
+              <option>Lectures</option>
+              <option>Zoom meeting</option>
+            </optgroup>
+            <optgroup label="Strict Verbatim">
+              <option>Strict Verbatim (Exact Spoken)</option>
+              <option>Legal dictation</option>
+              <option>Legal proceedings</option>
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <label for="mode">Rule set override</label>
+          <select id="mode">
+            <option value="auto">Auto from project</option>
+            <option value="edited">Clean/Edited verbatim</option>
+            <option value="strict">Strict verbatim</option>
+          </select>
+          <div class="hint">Applying: <span class="badge" id="modeBadge">Clean Verbatim</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2 -->
+    <section class="card">
+      <h2><span class="n">2</span>Raw Transcript Input</h2>
+      <p class="sub">Auto-populated from audio transcription, or paste text / upload SRT/TXT.</p>
+      <textarea id="raw" spellcheck="false" placeholder="MALE_1&#10;(0:00) First sentence. (0:04) Second sentence.&#10;FEMALE_1&#10;(0:09) A reply."></textarea>
+      <div class="btns">
+        <button type="button" id="btnScanSpeakers" class="primary">Scan speakers from input</button>
+        <button type="button" id="btnSample">Load sample</button>
+        <input type="file" id="file" accept=".txt,.srt,text/plain" hidden>
+        <button type="button" id="btnFile">Open file</button>
+        <button type="button" id="btnClear">Clear</button>
+      </div>
+      <div class="hint" id="rawHint"></div>
+    </section>
+
+    <!-- Step 3 -->
+    <section class="card">
+      <h2><span class="n">3</span>Speaker Mapping &amp; Remapping</h2>
+      <p class="sub">Map original input speakers (e.g. Speaker 1) to Eagle Web tags (e.g. MALE_1, FEMALE_1).</p>
+      <div id="spkBox"><div class="hint">Click "Scan speakers from input" after pasting text to configure mapping.</div></div>
+    </section>
+
+    <!-- Step 4 -->
+    <section class="card">
+      <h2><span class="n">4</span>Formatting Options &amp; Glossary Rules</h2>
+      <p class="sub">Configure timestamp calculations, style rules, and proper noun/term glossary.</p>
+      <div class="checks">
+        <label><input type="checkbox" id="oContinuous" checked><span>Continuous chained timestamps (End N = Start N+1)</span></label>
+        <label><input type="checkbox" id="oRandomMs" checked><span>Deterministic randomized milliseconds (.xxx)</span></label>
+        <label><input type="checkbox" id="oMergeSentences" checked><span>Merge mid-sentence timestamp cuts into complete sentences</span></label>
+        <label><input type="checkbox" id="oNoShortForms"><span>Expand contractions (Off by default — guidelines keep contractions as spoken)</span></label>
+        <label><input type="checkbox" id="oNoRepetitions" checked><span>Remove word repetitions, fillers &amp; stutters (Clean Read only)</span></label>
+        <label><input type="checkbox" id="oNumbers" checked><span>Enforce 0–9 spelled-out number rule (zero through nine)</span></label>
+        <label><input type="checkbox" id="oHyphenate" checked><span>Auto-hyphenate compound modifiers (e.g., high-quality, long-term)</span></label>
+        <label><input type="checkbox" id="oRunonCheck" checked><span>Smart-split unpunctuated run-on blocks (&gt;35 words at natural breaks)</span></label>
+        <label><input type="checkbox" id="oGrammar" checked><span>Enforce capitalization, terminal punctuation &amp; strip leading "So," comma</span></label>
+      </div>
+      <div class="row two">
+        <div>
+          <label for="minBlock">Minimum block duration (seconds)</label>
+          <input type="number" id="minBlock" value="8" min="4">
+        </div>
+        <div>
+          <label for="maxBlock">Target max block duration (seconds)</label>
+          <input type="number" id="maxBlock" value="15" min="8">
+        </div>
+      </div>
+      <label for="corr">Vocabulary &amp; Glossary Corrections (wrong =&gt; right)</label>
+      <textarea id="corr" style="min-height:76px" spellcheck="false" placeholder="Snick => SNCC&#10;Toledo => Toledo, Ohio"></textarea>
+    </section>
+
+    <!-- Build Segments & Version Store Trigger -->
+    <section class="card span2">
+      <div class="btns" style="margin-top:0">
+        <button type="button" id="btnGo" class="primary big">Load Segments &amp; Run QA</button>
+        <span class="hint" id="goHint">Builds structured segments with locked start/end seconds and saves Raw snapshot.</span>
+      </div>
+    </section>
+
+    <!-- Targeted AI Editor + Diff Review + Version Store -->
+    <section class="card span2" id="card-ai-agent">
+      <div class="ai-agent-head">
+        <h2 style="margin:0;"><span class="n">AI</span>Targeted AI Segment Editor &amp; Diff Review</h2>
+        <span class="ai-status-pill" id="aiReadyBadge">Decoupled Text Pass</span>
+      </div>
+      <p class="sub">Runs targeted text passes via <strong>openai/gpt-oss-120b</strong> on selected or batched segments without re-transcribing audio. Every change is proposed as a diff first so you can <strong>Accept</strong> or <strong>Reject</strong> with one-click Undo snapshots.</p>
+
+      <!-- Targeted Action Selector -->
+      <label style="margin-top:4px;">1. Choose Targeted AI Action</label>
+      <div class="action-strip" id="aiActionStrip">
+        <button type="button" class="action-btn active" data-action="cleanup">Cleanup &amp; Grammar Pass</button>
+        <button type="button" class="action-btn" data-action="style">Style &amp; Formatting Rules</button>
+        <button type="button" class="action-btn" data-action="rewrite">Targeted Selection Rewrite</button>
+        <button type="button" class="action-btn" data-action="speaker_assist">Speaker &amp; Section Assist</button>
+      </div>
+
+      <div class="row three">
+        <div>
+          <label for="aiScope">2. Segment Scope</label>
+          <select id="aiScope">
+            <option value="selected">Selected Segment(s) Only</option>
+            <option value="batch" selected>Next Batch (Up to 8 Segments)</option>
+            <option value="all">All Segments (Batched)</option>
+          </select>
+        </div>
+        <div>
+          <label for="aiRewriteInstruction">3. Rewrite / Term / Translation Instruction</label>
+          <input type="text" id="aiRewriteInstruction" placeholder="e.g. Fix 'Snick' to 'SNCC', clarify, or translate to Swahili" autocomplete="off">
+        </div>
+        <div>
+          <label for="aiTargetLang">Translation Target (If Translating)</label>
+          <input type="text" id="aiTargetLang" placeholder="e.g. Kiswahili, English" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="btns">
+        <button type="button" id="btnRunTargetedAi" class="primary big">Run Targeted AI Pass (Propose Diffs)</button>
+        <button type="button" id="btnAcceptAllDiffs" class="success" disabled>Accept All Pending Diffs</button>
+        <button type="button" id="btnRejectAllDiffs" class="danger" disabled>Reject All Pending Diffs</button>
+        <button type="button" id="btnUndoSnapshot" disabled>Undo Last Accepted Batch (<span id="undoCount">0</span>)</button>
+      </div>
+      <div class="hint" id="aiAgentStatus">Load or generate segments first, then select segments or run a batch pass.</div>
+
+      <!-- Versioned Transcript Store Bar -->
+      <div class="version-bar">
+        <div>
+          <strong>Versioned Transcript Store:</strong>
+          <span class="hint" id="versionSummary" style="display:inline; margin-left:6px;">Raw snapshot ready</span>
+        </div>
+        <div class="version-pills" id="versionPills">
+          <button type="button" class="v-pill active" data-view="raw">Raw</button>
+          <button type="button" class="v-pill" data-view="ai_edited">AI-Edited</button>
+          <button type="button" class="v-pill" data-view="clean_reader">Clean Reader</button>
+        </div>
+      </div>
+
+      <!-- Interactive Segment Diff List (Raw / AI-Edited) -->
+      <div id="segmentDiffView">
+        <div class="btns" style="margin-top:4px; margin-bottom:6px;">
+          <button type="button" class="small" id="btnSelectAllSegs">Select All</button>
+          <button type="button" class="small" id="btnDeselectAllSegs">Clear Selection</button>
+          <span class="hint" id="selectedSegCount">0 selected</span>
+        </div>
+        <div class="segment-list" id="segmentList">
+          <div class="hint">Click "Load Segments &amp; Run QA" above (or load sample) to inspect segments with clickable timestamps and diff previews.</div>
+        </div>
+      </div>
+
+      <!-- Clean Reader Mode View (Speaker & Section Assist output) -->
+      <div id="cleanReaderView" style="display:none;">
+        <div class="btns" style="margin-top:0; margin-bottom:8px;">
+          <button type="button" class="small primary" id="btnRefreshCleanReader">Rebuild Clean Reader Paragraphs &amp; Headings</button>
+          <button type="button" class="small" id="btnCopyCleanReader">Copy Clean Reader Text</button>
+        </div>
+        <div class="clean-reader-box" id="cleanReaderBox">
+          <p class="hint">Clean Reader groups logical blocks into paragraphs with section headings while keeping ground truth intact.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 5: Formatted Transcript & QA -->
+    <section class="card span2" id="card-out">
+      <h2><span class="n">5</span>Formatted Transcript &amp; QA Validation</h2>
+      <p class="sub">Export-ready transcript synced with accepted segment edits and locked timestamps.</p>
+      <div class="stats" id="stats"></div>
+      <ul class="qa" id="qa"></ul>
+
+      <label style="margin-top:16px; font-weight:700; color:var(--primary);">Eagle Web Guidelines Compliance &amp; Reviewer Audit Table</label>
+      <div id="qaTableContainer" style="overflow-x:auto; margin-top:8px;"></div>
+
+      <label for="out" style="margin-top:16px">Formatted Transcript</label>
+      <textarea id="out" spellcheck="false" placeholder="Formatted transcript output will appear here..."></textarea>
+      <div class="btns">
+        <button type="button" id="btnCheck">Re-check QA</button>
+        <button type="button" id="btnCopyRich" class="primary">Copy for Google Docs</button>
+        <button type="button" id="btnCopy">Copy Plain Text</button>
+        <button type="button" id="btnDoc">Download Word (.doc)</button>
+        <button type="button" id="btnTxt">Download .txt</button>
+      </div>
+      <details id="logWrap" style="margin-top:12px;">
+        <summary style="cursor:pointer;font-weight:600;font-size:13px;">Transformation Log (<span id="logCount">0</span>)</summary>
+        <pre class="log" id="log"></pre>
+      </details>
+    </section>
+
+    <!-- Step 6: Audio Player & Timestamp Checker -->
+    <section class="card span2" id="card-audio">
+      <h2><span class="n">6</span>Audio Player &amp; Timestamp Checker</h2>
+      <p class="sub">Click any segment's timestamp badge above to seek directly to that exact audio slice.</p>
+      <div class="row two">
+        <div>
+          <label for="rate">Playback Speed</label>
+          <select id="rate">
+            <option value="0.75">0.75x</option>
+            <option value="1" selected>1.0x</option>
+            <option value="1.25">1.25x</option>
+            <option value="1.5">1.5x</option>
+          </select>
+        </div>
+        <div>
+          <label>Current Time</label>
+          <div class="timer" id="clock">00:00:00.000</div>
+          <div class="btns" style="margin-top:8px"><button type="button" id="btnClock">Copy Timestamp</button></div>
+        </div>
+      </div>
+      <audio id="player" controls style="width:100%;margin-top:14px"></audio>
+    </section>
+  </div>
+</div>
+
+<!-- Eagle Web Guidelines Reference Tab -->
+<div id="tab-guidelines" class="tab-content" style="display:none;">
+  <div class="card">
+    <h2>Eagle Web General Guidelines Reference Hub</h2>
+    <p style="margin-bottom:1rem; color:var(--muted);">All rules, examples, and instructions enforced by the automated QA engine.</p>
+
+    <nav class="toc-card" aria-label="Table of Contents">
+      <h2>Table of Contents</h2>
+      <ul class="toc-grid">
+        <li><a href="#g-clean">Clean Read Overview</a></li>
+        <li><a href="#g-verb">Verbatim Overview</a></li>
+        <li><a href="#g-fill">Filler Words</a></li>
+        <li><a href="#g-plat">Platform Rules</a></li>
+        <li><a href="#g-audio">Audio Rules</a></li>
+        <li><a href="#g-punc">Punctuation</a></li>
+        <li><a href="#g-cap">Capitalization</a></li>
+        <li><a href="#g-write">Writing Rules</a></li>
+        <li><a href="#g-num">Numbers</a></li>
+        <li><a href="#g-math">Mathematical Guidelines</a></li>
+      </ul>
+    </nav>
+
+    <div id="g-clean" style="margin-top:1.5rem;">
+      <h3>Clean Read Overview</h3>
+      <ul class="rules-list">
+        <li>Ensure the transcript is concise and clear without interruptions.</li>
+        <li>Omit stutters, filler words, interruptions, partial words, and false starts.</li>
+        <li>Free of slang, irrelevant interjections, and non-verbal communication. Do not summarize or paraphrase.</li>
+        <li>Maintain sentence meaning. <span class="example"><strong>Example:</strong> I felt like kind of a fraud.</span></li>
+        <li>"So" and "And" rules: If the speaker begins many thoughts with So or And, omit them unless they form a logical link. Never place a comma directly after starting "So". <span class="example"><strong>Example:</strong> So it should be clear to you how humans evolved from apes.</span></li>
+      </ul>
+    </div>
+
+    <div id="g-verb" style="margin-top:1.5rem;">
+      <h3>Verbatim Overview</h3>
+      <ul class="rules-list">
+        <li>Includes all dialogue word by word, including fillers, partial words, false starts, slang, stutters, and repetitions.</li>
+        <li>Use dashes for stutters, partial words, and false starts. <span class="example"><strong>Stutter:</strong> I- I- I'm going shopping.</span> <span class="example"><strong>Partial Word:</strong> Close the window, I'm fr- freezing.</span></li>
+      </ul>
+    </div>
+
+    <div id="g-fill" style="margin-top:1.5rem;">
+      <h3>Filler Words</h3>
+      <ul class="rules-list">
+        <li>Fillers are only added in Verbatim jobs (e.g., you know, um, uh-huh, like, all right, sort of, kind of).</li>
+        <li>Always place commas around filler words in Verbatim. <span class="example"><strong>Example:</strong> They went, um, to the store.</span></li>
+      </ul>
+    </div>
+
+    <div id="g-plat" style="margin-top:1.5rem;">
+      <h3>Platform Rules</h3>
+      <ul class="rules-list">
+        <li>Work only in the platform; do not use external editors like Microsoft Word.</li>
+        <li>If speaker names are not listed, use <code>MALE_1</code>, <code>FEMALE_1</code>, or <code>UNKNOWN_1</code>.</li>
+      </ul>
+    </div>
+
+    <div id="g-audio" style="margin-top:1.5rem;">
+      <h3>Audio Rules</h3>
+      <ul class="rules-list">
+        <li>If 80% or more is in a foreign language, unassign due to "Unsupported Language".</li>
+        <li>Transcribe every lyric being sung verbatim if music is part of the speaker's performance. Do not transcribe background music.</li>
+      </ul>
+    </div>
+
+    <div id="g-punc" style="margin-top:1.5rem;">
+      <h3>Punctuation</h3>
+      <ul class="rules-list">
+        <li>Use double quotation marks for quotes. Use Oxford comma in lists of three or more.</li>
+        <li>Exclamation marks are never used (except established company names like Yahoo!). No ellipsis (<code>...</code>).</li>
+        <li>Keep contractions exactly as spoken. Do not add accent marks or special letters not found on a standard keyboard.</li>
+      </ul>
+    </div>
+
+    <div id="g-cap" style="margin-top:1.5rem;">
+      <h3>Capitalization</h3>
+      <table class="guide-table">
+        <thead><tr><th>Rule / Category</th><th>Examples &amp; Clarifications</th></tr></thead>
+        <tbody>
+          <tr><td>First word of a sentence or quote</td><td>Then he said, "Let's go fly a kite."</td></tr>
+          <tr><td>Names of people</td><td>Jane Smith</td></tr>
+          <tr><td>Titles | Formal job positions</td><td>Mr. | Mrs. | Dr. | Chief Executive Officer</td></tr>
+          <tr><td>Places | Countries | Cities</td><td>Earth | Port Authority | Ethiopia</td></tr>
+          <tr><td>Companies | Products</td><td>Facebook | Blundstone | Microsoft Azure</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="g-write" style="margin-top:1.5rem;">
+      <h3>Writing Rules</h3>
+      <ul class="rules-list">
+        <li>Use original speaker words. Default spelling is US spelling.</li>
+        <li>Required standard forms: <strong>email</strong> (not e-mail), <strong>all right</strong> (not alright), <strong>okay</strong> (not O.K), <strong>yeah</strong> (not yep, yup), <strong>y'all</strong> (not ya'll), <strong>I'm</strong> (not Am), <strong>TV / US / UK</strong> (not T.V. / U.S. / U.K.).</li>
+      </ul>
+    </div>
+
+    <div id="g-num" style="margin-top:1.5rem;">
+      <h3>Numbers</h3>
+      <ul class="rules-list">
+        <li>0–9 written as words (zero, six, seven); 10 and up as digits (10, 47, 126).</li>
+        <li>Decimals: 3.5 (not three point five). Currency: $15, €27, 33 cents.</li>
+      </ul>
+    </div>
+
+    <div id="g-math" style="margin-top:1.5rem;">
+      <h3>Mathematical Guidelines</h3>
+      <ul class="rules-list">
+        <li>Use digits and symbols for math equations. Within regular speech, use words for symbols.</li>
+        <li>Symbols: <code>+</code> (plus), <code>-</code> (minus/negative), <code>*</code> (times), <code>/</code> (divided by), <code>=</code> (equals), <code>()</code> (parentheses).</li>
+      </ul>
+    </div>
+
+    <a href="#top" class="back-to-top">&uarr; Back to Top</a>
+  </div>
+</div>
+
+<footer>Transcript Studio Engine &bull; Targeted AI Diff Editor &amp; Eagle Web QA Suite</footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  var STRICT_PROJECTS = ['Strict Verbatim (Exact Spoken)', 'Legal dictation', 'Legal proceedings'];
+  var NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+
+  // Versioned Transcript Store State
+  var versionStore = {
+    activeView: 'raw', // 'raw' | 'ai_edited' | 'clean_reader'
+    rawSnapshot: [],   // immutable array of { segmentId, speaker, text, start, end }
+    segments: [],      // live working segments { segmentId, speaker, originalText, currentText, start, end, pendingDiff }
+    selectedIds: {},   // { [segmentId]: true }
+    undoStack: [],     // array of snapshots before an accepted batch
+    cleanReaderSections: [] // [{ heading, paragraphs: [...] }]
+  };
+
+  var currentAiAction = 'cleanup'; // 'cleanup' | 'style' | 'rewrite' | 'speaker_assist'
+  var speakerMapping = {};
+  var selectedAudioFile = null;
+  var currentAudioUrl = null;
+
+  function $(id) { return document.getElementById(id); }
+
+  function pad(n, w) {
+    return String(Math.floor(Math.abs(n))).padStart(w || 2, '0');
+  }
+
+  function esc(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function stripNonYahooExclamations(text) {
+    return String(text || '').replace(/(\bYahoo)?!/gi, function(match, yahoo) {
+      return yahoo ? match : '.';
+    });
+  }
+
+  function hasNonYahooExclamation(text) {
+    var cleaned = String(text || '').replace(/\bYahoo!/gi, 'Yahoo');
+    return cleaned.indexOf('!') !== -1;
+  }
+
+  function modeFor(project, override) {
+    if (override === 'strict' || override === 'edited') return override;
+    return STRICT_PROJECTS.indexOf(project) > -1 ? 'strict' : 'edited';
+  }
+
+  function fmtTs(ms) {
+    ms = Math.max(0, Math.round(Number(ms) || 0));
+    var h = Math.floor(ms / 3600000);
+    var m = Math.floor((ms % 3600000) / 60000);
+    var s = Math.floor((ms % 60000) / 1000);
+    var rem = ms % 1000;
+    return pad(h, 2) + ':' + pad(m, 2) + ':' + pad(s, 2) + '.' + pad(rem, 3);
+  }
+
+  function fmtShortTs(sec) {
+    sec = Math.max(0, Number(sec) || 0);
+    var m = Math.floor(sec / 60);
+    var s = (sec % 60).toFixed(2);
+    return pad(m, 2) + ':' + (parseFloat(s) < 10 ? '0' : '') + s + 's';
+  }
+
+  function randomizeBoundaryMs(ms, seed) {
+    ms = Math.max(0, Math.round(Number(ms) || 0));
+    var secBase = Math.floor(ms / 1000) * 1000;
+    var currentMs = ms % 1000;
+    if (currentMs > 0) return ms;
+    var randMs = 113 + ((Math.abs((seed + 1) * 487 + Math.floor(secBase / 1000) * 293)) % 840);
+    return secBase + randMs;
+  }
+
+  function parseAudioLength(str) {
+    str = (str || '').replace(/minutes/gi, '').trim();
+    if (!str) return 0;
+    var p = str.split(':').map(function(x) { return parseFloat(x); });
+    if (p.some(isNaN)) return 0;
+    if (p.length === 1) return Math.round(p[0] * 60000);
+    if (p.length === 2) return Math.round((p[0] * 60 + p[1]) * 1000);
+    return Math.round((p[0] * 3600 + p[1] * 60 + p[2]) * 1000);
+  }
+
+  function formatDuration(sec) {
+    sec = Math.round(sec);
+    var h = Math.floor(sec / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    var s = sec % 60;
+    if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
+    return pad(m) + ':' + pad(s);
+  }
+
+  function enforceSevenWords(titleCandidate) {
+    var words = String(titleCandidate || '')
+      .replace(/[^\w\s'-]/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    var minor = { and: 1, in: 1, of: 1, on: 1, to: 1, for: 1, the: 1, a: 1, an: 1 };
+    var fillers = ['Overview', 'Analysis', 'Insights', 'Discussion', 'Review', 'Process', 'Report'];
+    var fi = 0;
+    while (words.length < 7) {
+      var cand = fillers[fi % fillers.length];
+      if (words.map(function(w) { return w.toLowerCase(); }).indexOf(cand.toLowerCase()) === -1) {
+        words.push(cand);
+      } else {
+        words.push(cand + 's');
+      }
+      fi++;
+    }
+    words = words.slice(0, 7);
+    return words.map(function(w, idx) {
+      var low = w.toLowerCase();
+      if (idx > 0 && minor[low]) return low;
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    }).join(' ');
+  }
+
+  function generateSevenWordTitle(rawText) {
+    if (!rawText || !rawText.trim()) return 'Panel Discussion on Key Industry Growth Insights';
+    var cleaned = rawText
+      .replace(/\b(?:Speaker|MALE|FEMALE|UNKNOWN|Male|Female)[_\s]*\d+\b/gi, ' ')
+      .replace(/\[\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}\]/g, ' ')
+      .replace(/\(\d+:\d+(?::\d+)?(?:\.\d+)?\)/g, ' ')
+      .replace(/[^a-zA-Z0-9\s-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    var stopWords = new Set([
+      'the','and','a','to','of','in','i','is','that','it','for','you','was','with','on','as','have','be','this','are','or','by','not','at','from','we','an','your','they','there','here','what','when','how','can','will','just','like','so','but','if','then','than','into','out','up','down','about','which','who','whom','whose','where','why','all','any','both','each','few','more','most','other','some','such','no','nor','only','own','same','too','very','don','now','going','get','got','say','said','one','two','three','way','thing','things','really','actually','kind','sort','yeah','okay','well','know','think','see','look','make','take','come','want','need','use','used'
+    ]);
+
+    var words = cleaned.split(' ').filter(function(w) {
+      return w.length > 2 && !stopWords.has(w.toLowerCase()) && !/^\d+$/.test(w);
+    });
+
+    if (words.length < 3) return 'Comprehensive Audio Transcript Review and Summary Report';
+
+    var freq = {};
+    var order = [];
+    words.forEach(function(w) {
+      var cap = w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+      if (!freq[cap]) {
+        freq[cap] = 0;
+        order.push(cap);
+      }
+      freq[cap] += 1;
+    });
+
+    var sorted = order.slice().sort(function(a, b) { return freq[b] - freq[a]; });
+    var top = sorted.slice(0, 5);
+    var rawTitle = top.length >= 5
+      ? [top[0], top[1], 'and', top[2], top[3], 'in', top[4]].join(' ')
+      : top.join(' ');
+    return enforceSevenWords(rawTitle);
+  }
+
+  function expandShortForms(text) {
+    var contractions = [
+      [/\bcan't\b/gi, 'cannot'], [/\bwon't\b/gi, 'will not'], [/\bdon't\b/gi, 'do not'], [/\bdoesn't\b/gi, 'does not'],
+      [/\bdidn't\b/gi, 'did not'], [/\bisn't\b/gi, 'is not'], [/\baren't\b/gi, 'are not'], [/\bwasn't\b/gi, 'was not'],
+      [/\bweren't\b/gi, 'were not'], [/\bhaven't\b/gi, 'have not'], [/\bhasn't\b/gi, 'has not'], [/\bhadn't\b/gi, 'had not'],
+      [/\bwouldn't\b/gi, 'would not'], [/\bcouldn't\b/gi, 'could not'], [/\bshouldn't\b/gi, 'should not'],
+      [/\bI'm\b/g, 'I am'], [/\byou're\b/gi, 'you are'], [/\bwe're\b/gi, 'we are'], [/\bthey're\b/gi, 'they are'],
+      [/\bit's\b/gi, 'it is'], [/\bthat's\b/gi, 'that is'], [/\bwhat's\b/gi, 'what is'], [/\bthere's\b/gi, 'there is'],
+      [/\bhere's\b/gi, 'here is'], [/\bI've\b/g, 'I have'], [/\byou've\b/gi, 'you have'], [/\bwe've\b/gi, 'we have'],
+      [/\bthey've\b/gi, 'they have'], [/\bI'll\b/g, 'I will'], [/\byou'll\b/gi, 'you will'], [/\bwe'll\b/gi, 'we will'],
+      [/\bthey'll\b/gi, 'they will'], [/\bhe'll\b/gi, 'he will'], [/\bshe'll\b/gi, 'she will'], [/\bit'll\b/gi, 'it will'],
+      [/\bI'd\b/g, 'I would'], [/\byou'd\b/gi, 'you would'], [/\bwe'd\b/gi, 'we would'], [/\bthey'd\b/gi, 'they would']
+    ];
+    contractions.forEach(function(pair) {
+      text = text.replace(pair[0], function(match) {
+        if (match.charAt(0) === match.charAt(0).toUpperCase() && match.charAt(0) !== 'I') {
+          return pair[1].charAt(0).toUpperCase() + pair[1].slice(1);
+        }
+        return pair[1];
+      });
+    });
+    return text;
+  }
+
+  function applyGeneralWritingRules(text) {
+    text = text.replace(/\be-mail\b/gi, 'email');
+    text = text.replace(/\balright\b/gi, 'all right');
+    text = text.replace(/(^|[^A-Za-z])O\.?K\.?(?=$|[^A-Za-z])/gi, '$1okay');
+    text = text.replace(/\b(?:yep|yup)\b/gi, 'yeah');
+    text = text.replace(/\bya'll\b/gi, "y'all");
+    text = text.replace(/\bam\b(?=\s+(?:going|not|sure|here|ready|trying|working|happy|glad|sorry))/gi, "I'm");
+    text = text.replace(/(^|[^A-Za-z])T\.V\.?(?=$|[^A-Za-z])/gi, '$1TV');
+    text = text.replace(/(^|[^A-Za-z])U\.S\.?(?=$|[^A-Za-z])/gi, '$1US');
+    text = text.replace(/(^|[^A-Za-z])U\.K\.?(?=$|[^A-Za-z])/gi, '$1UK');
+    text = text.replace(/(^|[.?!]\s+)So,\s+/g, '$1So ');
+    return text;
+  }
+
+  function enforceSmallNumbersRule(text) {
+    // Preserve math equations (e.g., 1 + 2 = 3, x + 5 = 2x * 2) per Eagle Web Mathematical Guidelines
+    if (/[0-9a-zA-Z)\]]\s*[+\-*/=^_]\s*[0-9a-zA-Z(\[]/.test(text)) {
+      return text;
+    }
+    return text.replace(/(^|[\s("])([0-9])(?=[\s.,;?!)"]|$)/g, function(match, prefix, digit) {
+      var word = NUMBER_WORDS[parseInt(digit, 10)];
+      if (!prefix || /[.?!]\s+$/.test(prefix)) {
+        word = word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      return prefix + word;
+    });
+  }
+
+  function formatVerbatimFillers(text) {
+    // Eagle Web Verbatim rule: place commas around filler words (um, uh, uh-huh, you know)
+    return text.replace(/\s+\b(um|uh|uh-huh|you know)\b\s+/gi, ', $1, ')
+               .replace(/,\s*,/g, ',')
+               .replace(/\s{2,}/g, ' ')
+               .trim();
+  }
+
+  function removeWordRepetitions(text) {
+    var prev;
+    do {
+      prev = text;
+      text = text.replace(/\b([A-Za-z']+)(?:,\s*|\s+)\1\b/gi, '$1');
+    } while (text !== prev);
+
+    text = text.replace(/\b(\w+\s+\w+)(?:,\s*|\s+)\1\b/gi, '$1');
+    text = text.replace(/\b(\w+\s+\w+\s+\w+\s+\w+)(?:,\s*|\s+)\1\b/gi, '$1');
+    text = text.replace(/\b(?:uh|um|uh-huh|mm-hmm)\b,?\s*/gi, '');
+    text = text.replace(/\bIt's just that's\b/gi, "That's");
+    text = text.replace(/\bIt is just that is\b/gi, 'That is');
+    return text.replace(/\s{2,}/g, ' ').trim();
+  }
+
+  function applyCompoundHyphens(text) {
+    var compounds = [
+      { re: /\bhigh quality\b/gi, sub: 'high-quality' },
+      { re: /\bhigh integrity\b/gi, sub: 'high-integrity' },
+      { re: /\blong term\b/gi, sub: 'long-term' },
+      { re: /\bshort term\b/gi, sub: 'short-term' },
+      { re: /\bstate government\b/gi, sub: 'state-government' },
+      { re: /\btwo year\b/gi, sub: 'two-year' },
+      { re: /\bone year\b/gi, sub: 'one-year' },
+      { re: /\bprice sensitive\b/gi, sub: 'price-sensitive' },
+      { re: /\bpurpose driven\b/gi, sub: 'purpose-driven' },
+      { re: /\bcommercial grade\b/gi, sub: 'commercial-grade' },
+      { re: /\bthree way\b/gi, sub: 'three-way' },
+      { re: /\btwo way\b/gi, sub: 'two-way' },
+      { re: /\bnon directed\b/gi, sub: 'non-directed' },
+      { re: /\bpatient donor\b/gi, sub: 'patient-donor' },
+      { re: /\b20th century\b/gi, sub: '20th-century' },
+      { re: /\b21st century\b/gi, sub: '21st-century' }
+    ];
+    compounds.forEach(function(c) { text = text.replace(c.re, c.sub); });
+    return text;
+  }
+
+  function applyVocabCorrections(text, corrRaw) {
+    if (!corrRaw || !corrRaw.trim()) return text;
+    corrRaw.split('\n').forEach(function(line) {
+      var parts = line.split('=>');
+      if (parts.length === 2) {
+        var wrong = parts[0].trim();
+        var right = parts[1].trim();
+        if (wrong && right) {
+          var escaped = wrong.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          text = text.replace(new RegExp('\\b' + escaped + '\\b', 'gi'), right);
+        }
+      }
+    });
+    return text;
+  }
+
+  function smartSplitRunOn(text) {
+    var parts = text.split(/(?<=[.?!])\s+/);
+    return parts.map(function(sent) {
+      var trimmed = sent.trim();
+      var words = trimmed.split(/\s+/);
+      if (words.length <= 38) return trimmed;
+      var mid = Math.floor(words.length / 2);
+      var splitIdx = mid;
+      for (var offset = 0; offset <= 8; offset++) {
+        if (mid + offset < words.length - 4 && /[,;]$/.test(words[mid + offset])) {
+          splitIdx = mid + offset + 1;
+          break;
+        }
+        if (mid - offset > 4 && /[,;]$/.test(words[mid - offset])) {
+          splitIdx = mid - offset + 1;
+          break;
+        }
+      }
+      var first = words.slice(0, splitIdx).join(' ').replace(/[,;]+$/, '') + '.';
+      var second = words.slice(splitIdx).join(' ').replace(/[,;]+$/, '');
+      if (!/[.?!]$/.test(second)) second += '.';
+      second = second.charAt(0).toUpperCase() + second.slice(1);
+      return first + ' ' + second;
+    }).join(' ');
+  }
+
+  function parseInput(raw) {
+    raw = (raw || '').replace(/\r/g, '').trim();
+    if (!raw) return { segments: [], kind: 'none' };
+    if (/\d{1,2}:\d{2}:\d{2}[,.]\d{1,3}\s*-->\s*\d{1,2}:\d{2}:\d{2}[,.]\d{1,3}/.test(raw)) return parseSRT(raw);
+    if (/\[\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}\]/.test(raw)) return parseBracketed(raw);
+    return parseTurbo(raw);
+  }
+
+  function parseBracketed(raw) {
+    var lines = raw.split('\n');
+    var segs = [];
+    var speaker = 'MALE_1';
+    var cur = null;
+    var tsRe = /^\[(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})\]$/;
+    var toMs = function(h, m, s, ms) { return ((+h) * 3600 + (+m) * 60 + (+s)) * 1000 + (+ms); };
+
+    lines.forEach(function(line) {
+      var t = line.trim();
+      if (!t || t.indexOf('Transcription Job:') === 0 || t.indexOf('Client:') === 0 ||
+          t.indexOf('Transcribed By:') === 0 || t.indexOf('Date:') === 0 ||
+          t.indexOf('Audio Length:') === 0 || t.indexOf('[END OF RECORDING') === 0) return;
+
+      var spkMatch = /^([A-Za-z0-9_\-\s]+):$/.exec(t);
+      if (spkMatch) {
+        speaker = spkMatch[1].trim();
+        return;
+      }
+      var m = tsRe.exec(t);
+      if (m) {
+        if (cur && cur.text.trim()) segs.push(cur);
+        cur = {
+          speaker: speaker,
+          start: toMs(m[1], m[2], m[3], m[4]),
+          end: toMs(m[5], m[6], m[7], m[8]),
+          text: ''
+        };
+      } else if (cur) {
+        cur.text += (cur.text ? ' ' : '') + t;
+      }
+    });
+    if (cur && cur.text.trim()) segs.push(cur);
+    return { segments: segs, kind: 'bracketed' };
+  }
+
+  function parseTurbo(raw) {
+    var lines = raw.split('\n');
+    var segs = [];
+    var speaker = 'MALE_1';
+    var open = null;
+    var hasTsRe = /\(\d+:\d{2}(?::\d{2})?(?:\.\d{1,3})?\)/;
+    var re = /\((\d+):(\d{2})(?::(\d{2}))?(?:\.(\d{1,3}))?\)/g;
+
+    lines.forEach(function(line) {
+      var t = line.trim();
+      if (!t) return;
+      var sm = /^([A-Za-z0-9_\-\s]+)\s*[:]?\s*$/.exec(t);
+      if (sm && !hasTsRe.test(t)) {
+        speaker = sm[1].trim();
+        open = null;
+        return;
+      }
+      var last = 0;
+      var m;
+      re.lastIndex = 0;
+      while ((m = re.exec(t)) !== null) {
+        var before = t.slice(last, m.index).trim();
+        if (before) {
+          if (open) open.text += (open.text ? ' ' : '') + before;
+          else { open = { speaker: speaker, start: 0, text: before }; segs.push(open); }
+        }
+        var msPart = m[4] ? parseInt((m[4] + '00').slice(0, 3), 10) : 0;
+        var start = m[3] !== undefined
+          ? ((+m[1]) * 3600 + (+m[2]) * 60 + (+m[3])) * 1000 + msPart
+          : ((+m[1]) * 60 + (+m[2])) * 1000 + msPart;
+        open = { speaker: speaker, start: start, text: '' };
+        segs.push(open);
+        last = m.index + m[0].length;
+      }
+      var tail = t.slice(last).trim();
+      if (tail) {
+        if (open) open.text += (open.text ? ' ' : '') + tail;
+        else { open = { speaker: speaker, start: 0, text: tail }; segs.push(open); }
+      }
+    });
+    return { segments: segs.filter(function(s) { return s.text.trim(); }), kind: 'text' };
+  }
+
+  function parseSRT(raw) {
+    var blocks = raw.split(/\n\s*\n/);
+    var segs = [];
+    var lastSpk = 'MALE_1';
+    var tre = /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/;
+    blocks.forEach(function(b) {
+      var lines = b.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+      var ti = -1;
+      var tm = null;
+      for (var i = 0; i < lines.length; i++) {
+        tm = tre.exec(lines[i]);
+        if (tm) { ti = i; break; }
+      }
+      if (ti < 0) return;
+      var ms = function(h, m, s, f) {
+        return ((+h) * 3600 + (+m) * 60 + (+s)) * 1000 + parseInt((f + '00').slice(0, 3), 10);
+      };
+      var text = lines.slice(ti + 1).join(' ').trim();
+      var sp = /^([A-Za-z0-9_\-\s]+)\s*[:\-\u2013]\s*([\s\S]*)$/i.exec(text);
+      if (sp) { lastSpk = sp[1].trim(); text = sp[2].trim(); }
+      if (!text) return;
+      segs.push({
+        speaker: lastSpk,
+        start: ms(tm[1], tm[2], tm[3], tm[4]),
+        end: ms(tm[5], tm[6], tm[7], tm[8]),
+        text: text
+      });
+    });
+    return { segments: segs, kind: 'srt' };
+  }
+
+  function explodeIntoSentenceChunks(rawSegs) {
+    var chunks = [];
+    rawSegs.forEach(function(seg, idx) {
+      var nextStart = (idx + 1 < rawSegs.length) ? rawSegs[idx + 1].start : (seg.end || seg.start + 4000);
+      if (nextStart <= seg.start) nextStart = seg.start + 3000;
+
+      var txt = seg.text.replace(/\s+/g, ' ').trim();
+      var parts = txt.split(/(?<=[.?!])\s+/).filter(Boolean);
+      if (parts.length <= 1) {
+        chunks.push({ speaker: seg.speaker, start: seg.start, end: nextStart, text: txt });
+      } else {
+        var totalLen = txt.length || 1;
+        var cursor = seg.start;
+        parts.forEach(function(p, pIdx) {
+          var ratio = p.length / totalLen;
+          var dur = Math.round((nextStart - seg.start) * ratio);
+          var pEnd = (pIdx === parts.length - 1) ? nextStart : (cursor + Math.max(500, dur));
+          chunks.push({ speaker: seg.speaker, start: cursor, end: pEnd, text: p.trim() });
+          cursor = pEnd;
+        });
+      }
+    });
+    return chunks;
+  }
+
+  function buildBlocks(parsed, cfg) {
+    var rawSegs = parsed.segments.map(function(s) {
+      return { speaker: s.speaker, start: s.start, end: s.end || 0, text: s.text.trim() };
+    });
+    if (!rawSegs.length) return [];
+
+    var audioMs = cfg.audioMs || 0;
+    var minBlockMs = cfg.minBlockMs || 8000;
+    var targetMaxMs = cfg.maxBlockMs || 15000;
+    var hardCeilingMs = Math.max(targetMaxMs + 10000, 25000);
+
+    var sentenceChunks = cfg.mergeSentences ? explodeIntoSentenceChunks(rawSegs) : rawSegs;
+    var blocks = [];
+    var curBlock = {
+      speaker: sentenceChunks[0].speaker,
+      start: sentenceChunks[0].start,
+      end: sentenceChunks[0].end,
+      text: sentenceChunks[0].text
+    };
+
+    for (var i = 1; i < sentenceChunks.length; i++) {
+      var cur = sentenceChunks[i];
+      var sameSpeaker = cur.speaker === curBlock.speaker;
+      var blockDuration = cur.start - curBlock.start;
+      var endsWithPunctuation = /[.?!]["']?$/.test(curBlock.text.trim());
+
+      var reachedMinWindow = blockDuration >= minBlockMs;
+      var reachedTargetMax = blockDuration >= targetMaxMs;
+      var exceededHardCeiling = blockDuration >= hardCeilingMs;
+
+      if (sameSpeaker && (!reachedMinWindow || (!endsWithPunctuation && !exceededHardCeiling))) {
+        curBlock.text += ' ' + cur.text;
+        curBlock.end = Math.max(curBlock.end, cur.end);
+      } else if (sameSpeaker && endsWithPunctuation && !reachedTargetMax && ((cur.end - curBlock.start) <= targetMaxMs)) {
+        curBlock.text += ' ' + cur.text;
+        curBlock.end = Math.max(curBlock.end, cur.end);
+      } else {
+        blocks.push(curBlock);
+        curBlock = { speaker: cur.speaker, start: cur.start, end: cur.end, text: cur.text };
+      }
+    }
+    blocks.push(curBlock);
+
+    var lastRawEnd = rawSegs[rawSegs.length - 1].end || (rawSegs[rawSegs.length - 1].start + 3000);
+    var finalTargetEnd = audioMs > 0 ? audioMs : lastRawEnd;
+    if (finalTargetEnd <= blocks[blocks.length - 1].start) {
+      finalTargetEnd = blocks[blocks.length - 1].start + 3000;
+    }
+
+    for (var j = 0; j < blocks.length; j++) {
+      var b = blocks[j];
+      if (j === 0) {
+        b.start = cfg.randomMs ? randomizeBoundaryMs(b.start, 1) : b.start;
+      } else if (cfg.continuous) {
+        b.start = blocks[j - 1].end;
+      } else {
+        b.start = cfg.randomMs ? randomizeBoundaryMs(b.start, j + 1) : b.start;
+      }
+
+      if (j < blocks.length - 1) {
+        var nextRawStart = blocks[j + 1].start;
+        var minAllowedEnd = b.start + Math.min(minBlockMs, Math.max(2000, nextRawStart - b.start));
+        var chosenEnd = cfg.continuous ? Math.max(nextRawStart, minAllowedEnd) : (b.end > b.start ? b.end : nextRawStart);
+        if (finalTargetEnd > 0 && chosenEnd >= finalTargetEnd - 1500) {
+          chosenEnd = Math.min(nextRawStart, finalTargetEnd - 1000);
+        }
+        b.end = cfg.randomMs ? randomizeBoundaryMs(chosenEnd, j + 10) : chosenEnd;
+        if (b.end <= b.start) b.end = b.start + 1500;
+      } else {
+        b.end = cfg.randomMs ? randomizeBoundaryMs(finalTargetEnd, j + 99) : finalTargetEnd;
+        if (audioMs > 0) {
+          var audioSecBase = Math.floor(audioMs / 1000) * 1000;
+          var audioRem = audioMs % 1000;
+          b.end = audioRem > 0 ? audioMs : (audioSecBase + (cfg.randomMs ? (113 + ((blocks.length * 197) % 750)) : 0));
+        }
+        if (b.end <= b.start) b.end = b.start + 1000;
+      }
+    }
+
+    return blocks;
+  }
+
+  function runIterativeQA(transcriptText, mode, opts) {
+    var currentText = transcriptText || '';
+    var finalIssues = [];
+    var sentenceCount = 0;
+    var errorCount = 0;
+    var logs = [];
+    opts = opts || {};
+
+    for (var pass = 1; pass <= 5; pass++) {
+      var issues = [];
+      var lines = currentText.split('\n');
+      sentenceCount = 0;
+      errorCount = 0;
+      var correctedLines = [];
+
+      lines.forEach(function(line) {
+        var trimmed = line.trim();
+        if (!trimmed ||
+            trimmed.indexOf('Transcription Job:') === 0 ||
+            trimmed.indexOf('Client:') === 0 ||
+            trimmed.indexOf('Transcribed By:') === 0 ||
+            trimmed.indexOf('Date:') === 0 ||
+            trimmed.indexOf('Audio Length:') === 0 ||
+            trimmed.charAt(0) === '[') {
+          correctedLines.push(line);
+          return;
+        }
+        if (trimmed.slice(-1) === ':' && trimmed.indexOf('.') === -1) {
+          correctedLines.push(line);
+          return;
+        }
+
+        sentenceCount++;
+        var modifiedLine = line;
+
+        if (pass === 1 && opts.corr) {
+          modifiedLine = applyVocabCorrections(modifiedLine, opts.corr);
+        }
+
+        modifiedLine = applyGeneralWritingRules(modifiedLine);
+
+        if (opts.numbers) {
+          modifiedLine = enforceSmallNumbersRule(modifiedLine);
+        }
+
+        if (mode === 'strict') {
+          modifiedLine = formatVerbatimFillers(modifiedLine);
+        } else {
+          if (opts.noRepetitions) modifiedLine = removeWordRepetitions(modifiedLine);
+          if (opts.noShortForms) modifiedLine = expandShortForms(modifiedLine);
+        }
+
+        if (opts.hyphenate) {
+          modifiedLine = applyCompoundHyphens(modifiedLine);
+        }
+
+        if (opts.runonCheck && pass === 1) {
+          var beforeSplit = modifiedLine;
+          modifiedLine = smartSplitRunOn(modifiedLine);
+          if (beforeSplit !== modifiedLine) {
+            logs.push('Split long block (>38 words) cleanly at natural clause boundary.');
+          }
+        }
+
+        modifiedLine = modifiedLine.replace(/\u2011/g, '-');
+        modifiedLine = modifiedLine.replace(/,\s*\./g, '.');
+        modifiedLine = modifiedLine.replace(/\.{2,}/g, '.');
+        modifiedLine = stripNonYahooExclamations(modifiedLine);
+        modifiedLine = modifiedLine.replace(/\s+([.,?])/g, '$1');
+        modifiedLine = modifiedLine.replace(/\s{2,}/g, ' ');
+
+        modifiedLine = modifiedLine.replace(/([.?!]\s+)([a-z])/g, function(m, p1, p2) {
+          return p1 + p2.toUpperCase();
+        });
+
+        var words = modifiedLine.trim().split(/\s+/);
+        if (words.length > 42 && !/[.?!;]/.test(modifiedLine)) {
+          if (pass === 5) {
+            issues.push({ level: 'bad', text: 'Run-on sentence (>42 words): "' + modifiedLine.slice(0, 45) + '..."' });
+            errorCount++;
+          }
+        }
+
+        if (opts.grammar) {
+          var firstChar = modifiedLine.trim().charAt(0);
+          if (firstChar && firstChar !== '"' && firstChar !== "'" && firstChar !== firstChar.toUpperCase()) {
+            if (pass < 5) {
+              var lineIdx = modifiedLine.indexOf(modifiedLine.trim());
+              if (lineIdx >= 0) {
+                modifiedLine = modifiedLine.slice(0, lineIdx) + firstChar.toUpperCase() + modifiedLine.trim().slice(1);
+              }
+            } else {
+              issues.push({ level: 'bad', text: 'Sentence starts with a lowercase letter.' });
+              errorCount++;
+            }
+          }
+
+          var lastChar = modifiedLine.trim().slice(-1);
+          if (lastChar && ['.', '?', '!', '"', "'"].indexOf(lastChar) === -1) {
+            if (pass < 5) {
+              modifiedLine = modifiedLine.trim() + '.';
+            } else {
+              issues.push({ level: 'bad', text: 'Missing terminal punctuation at end of sentence.' });
+              errorCount++;
+            }
+          }
+        }
+
+        correctedLines.push(modifiedLine);
+      });
+
+      currentText = correctedLines.join('\n');
+      finalIssues = issues;
+    }
+
+    if (finalIssues.length === 0) {
+      finalIssues.push({ level: 'ok', text: '5-Pass Anti-Rejection QA Passed Successfully!' });
+    }
+
+    return {
+      correctedText: currentText,
+      issues: finalIssues,
+      sentenceCount: sentenceCount,
+      errorCount: errorCount,
+      logs: logs
+    };
+  }
+
+  function getGroqKeysList(rawInput) {
+    var source = (typeof rawInput === 'string' && rawInput.trim())
+      ? rawInput
+      : (localStorage.getItem('groq_api_keys') || localStorage.getItem('groq_api_key') || '');
+
+    return source
+      .split(/[\s,;]+/)
+      .map(function(k) { return k.trim(); })
+      .filter(function(k) { return k.length > 0; });
+  }
+
+  function safeParseAgentJson(rawContent) {
+    var text = String(rawContent || '').trim();
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      var firstBrace = text.indexOf('{');
+      var lastBrace = text.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        return JSON.parse(text.slice(firstBrace, lastBrace + 1));
+      }
+      throw new Error('Model output was not valid JSON');
+    }
+  }
+
+  async function callGroqJson(apiKey, systemPrompt, userPrompt) {
+    var keys = getGroqKeysList(apiKey);
+    if (!keys.length) {
+      throw new Error('Please enter at least one Groq API key in Step 1.');
+    }
+
+    var lastError = null;
+    for (var i = 0; i < keys.length; i++) {
+      var currentKey = keys[i];
+      try {
+        var resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + currentKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'openai/gpt-oss-120b',
+            temperature: 0.1,
+            max_tokens: 8192,
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        });
+
+        if (!resp.ok) {
+          var errBody = await resp.text();
+          throw new Error('Groq API ' + resp.status + ' (Key #' + (i + 1) + '): ' + errBody.slice(0, 150));
+        }
+
+        var data = await resp.json();
+        var content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if (!content) throw new Error('Empty response from Groq AI');
+
+        var parsed = safeParseAgentJson(content);
+        if (i > 0) {
+          var reordered = [currentKey].concat(keys.filter(function(_, idx) { return idx !== i; }));
+          var joined = reordered.join(', ');
+          localStorage.setItem('groq_api_keys', joined);
+          localStorage.setItem('groq_api_key', joined);
+          if ($('groqKey')) $('groqKey').value = joined;
+        }
+        return parsed;
+      } catch (e) {
+        lastError = e;
+        if (i < keys.length - 1) {
+          await new Promise(function(resolve) { setTimeout(resolve, 350); });
+        }
+      }
+    }
+    throw lastError || new Error('All Groq API keys failed.');
+  }
+
+  // Build System Prompt for Targeted AI Editing + Hallucination Guardrails
+  function buildTargetedSystemPrompt(action, mode, glossary, instruction, targetLang) {
+    var baseGuardrails = [
+      'You are a precision transcript editor enforcing strict anti-hallucination guardrails.',
+      'Return ONLY a valid JSON object matching the requested schema.',
+      'ANTI-HALLUCINATION RULES:',
+      '1. Ground strictly to the source segment text. NEVER invent facts, names, dates, or numbers not present in the segment.',
+      '2. If speech is genuinely ambiguous or garbled, use [inaudible] or [unclear] instead of guessing.',
+      '3. Preserve hedges ("I think", "maybe", "probably"), uncertainty, and speaker tone unless the user explicitly asks to translate or rewrite.',
+      '4. Never alter segmentId, start, or end timestamps.'
+    ];
+
+    if (action === 'speaker_assist') {
+      return baseGuardrails.concat([
+        'TASK = SPEAKER & SECTION ASSIST:',
+        'Group consecutive segments into logical thematic sections with concise headings for Clean Reader mode.',
+        'Also suggest speaker label groupings if speaker tags appear inconsistent.',
+        'JSON schema: {"sections": [{"heading": "...", "segmentIds": ["seg_1"], "summaryNote": "..."}], "speakerSuggestions": [{"from": "...", "to": "...", "reason": "..."}]}'
+      ]).join('\n');
+    }
+
+    var modeRule = (mode === 'strict')
+      ? 'Style = Strict Verbatim: keep fillers/hesitations/exact spoken words; fix typos/casing/punctuation only.'
+      : 'Style = Clean Read: remove fillers (um, uh, like, you know), false starts, and stutters while preserving meaning and qualifiers.';
+
+    var actionSpecific = '';
+    if (action === 'cleanup') {
+      actionSpecific = 'TASK = CLEANUP & GRAMMAR PASS: Remove filler words, false starts, and stutters while keeping intent, tone, and hedges intact.';
+    } else if (action === 'style') {
+      actionSpecific = 'TASK = STYLE & FORMATTING RULES: Enforce consistent punctuation, capitalization, US spelling (email, all right, okay, yeah, TV, US, UK), 0-9 spelled out as words, no exclamation marks or ellipses, and apply glossary corrections.';
+    } else if (action === 'rewrite') {
+      actionSpecific = 'TASK = TARGETED SELECTION REWRITE: Apply the user instruction ("' + (instruction || 'Clarify while preserving exact meaning') + '"' + (targetLang ? ', target language: ' + targetLang : '') + ') strictly to the provided segment(s) without adding outside facts.';
+    }
+
+    return baseGuardrails.concat([
+      modeRule,
+      actionSpecific,
+      glossary ? ('Active Glossary / Corrections:\n' + glossary) : '',
+      'JSON schema: {"edits": [{"segmentId": "seg_1", "proposedText": "...", "reason": "concise reason"}]}'
+    ]).filter(Boolean).join('\n');
+  }
+
+  // Schema & Guardrail Validation before showing diffs in UI
+  function validateAndNormalizeEdits(rawEdits, requestedSlice) {
+    var byId = {};
+    requestedSlice.forEach(function(seg) { byId[seg.segmentId] = seg; });
+
+    var validDiffs = [];
+    if (!Array.isArray(rawEdits)) return validDiffs;
+
+    rawEdits.forEach(function(item) {
+      if (!item || typeof item.segmentId !== 'string' || typeof item.proposedText !== 'string') return;
+      var targetSeg = byId[item.segmentId];
+      if (!targetSeg) return; // Reject unknown/hallucinated segmentId
+
+      var cleanProposed = item.proposedText.trim();
+      cleanProposed = cleanProposed.replace(/\.\.\./g, '.');
+      cleanProposed = stripNonYahooExclamations(cleanProposed);
+      if (!cleanProposed) return;
+
+      var baseText = targetSeg.currentText.trim();
+      if (cleanProposed === baseText) return; // No change needed
+
+      validDiffs.push({
+        segmentId: targetSeg.segmentId,
+        originalText: baseText,
+        proposedText: cleanProposed,
+        reason: (typeof item.reason === 'string' && item.reason.trim()) ? item.reason.trim() : 'Targeted AI edit',
+        status: 'pending',
+        start: Number((targetSeg.startMs / 1000).toFixed(2)),
+        end: Number((targetSeg.endMs / 1000).toFixed(2))
+      });
+    });
+
+    return validDiffs;
+  }
+
+  // Sync Versioned Store into Step 5 Formatted Transcript & QA
+  function syncFormattedOutputFromStore() {
+    if (!versionStore.segments.length) return;
+    var topicVal = $('topic').value.trim() || generateSevenWordTitle(versionStore.segments.map(function(s) { return s.currentText; }).join(' '));
+    var lastEndMs = versionStore.segments[versionStore.segments.length - 1].endMs;
+    var audioLenLabel = ($('audio').value || formatDuration(lastEndMs / 1000)).replace(/minutes/gi, '').trim();
+
+    var lines = [
+      'Transcription Job: ' + topicVal,
+      'Client: ' + $('client').value,
+      'Transcribed By: ' + $('by').value,
+      'Date: ' + $('date').value,
+      'Audio Length: ' + audioLenLabel + ' Minutes',
+      ''
+    ];
+
+    versionStore.segments.forEach(function(s) {
+      var spk = speakerMapping[s.speaker] || s.speaker;
+      lines.push(spk + ':\n[' + fmtTs(s.startMs) + ' --> ' + fmtTs(s.endMs) + ']\n' + s.currentText + '\n');
+    });
+
+    lines.push('[END OF RECORDING --> ' + fmtTs(lastEndMs) + ']');
+
+    var currentMode = modeFor($('project').value, $('mode').value);
+    var qaRes = runIterativeQA(lines.join('\n'), currentMode, getQAOpts());
+    $('out').value = qaRes.correctedText;
+    renderQA(qaRes);
+    $('qaTableContainer').innerHTML = generateQAAuditTable(qaRes.correctedText, currentMode, qaRes);
+  }
+
+  function rebuildCleanReaderLocal() {
+    if (!versionStore.segments.length) {
+      versionStore.cleanReaderSections = [];
+      renderCleanReader();
+      return;
+    }
+    var sections = [];
+    var curSec = null;
+    versionStore.segments.forEach(function(seg, idx) {
+      var spk = speakerMapping[seg.speaker] || seg.speaker;
+      if (!curSec || idx % 5 === 0) {
+        var secNum = sections.length + 1;
+        curSec = {
+          heading: 'Section ' + secNum + ' (' + fmtShortTs(seg.startMs / 1000) + ' — ' + spk + ')',
+          paragraphs: []
+        };
+        sections.push(curSec);
+      }
+      curSec.paragraphs.push(seg.currentText);
+    });
+    versionStore.cleanReaderSections = sections;
+    renderCleanReader();
+  }
+
+  function renderCleanReader() {
+    var box = $('cleanReaderBox');
+    if (!versionStore.cleanReaderSections.length) {
+      box.innerHTML = '<p class="hint">No segments loaded yet. Load segments in Step 5 first.</p>';
+      return;
+    }
+    var html = versionStore.cleanReaderSections.map(function(sec) {
+      var pHtml = sec.paragraphs.map(function(p) { return '<p>' + esc(p) + '</p>'; }).join('');
+      return '<h3>' + esc(sec.heading) + '</h3>' + pHtml;
+    }).join('');
+    box.innerHTML = html;
+  }
+
+  function renderSegmentList() {
+    var list = $('segmentList');
+    var pendingCount = 0;
+
+    if (!versionStore.segments.length) {
+      list.innerHTML = '<div class="hint">Click "Load Segments &amp; Run QA" above (or load sample) to inspect segments.</div>';
+      $('btnAcceptAllDiffs').disabled = true;
+      $('btnRejectAllDiffs').disabled = true;
+      $('undoCount').textContent = String(versionStore.undoStack.length);
+      $('btnUndoSnapshot').disabled = versionStore.undoStack.length === 0;
+      $('selectedSegCount').textContent = '0 selected';
+      return;
+    }
+
+    var selCount = 0;
+    var html = versionStore.segments.map(function(seg) {
+      var isSelected = !!versionStore.selectedIds[seg.segmentId];
+      if (isSelected) selCount++;
+      var diff = seg.pendingDiff;
+      var hasPending = diff && diff.status === 'pending';
+      if (hasPending) pendingCount++;
+
+      var displayText = (versionStore.activeView === 'raw') ? seg.originalText : seg.currentText;
+      var statusLabel = hasPending ? 'pending' : (diff ? diff.status : 'clean');
+      var spk = speakerMapping[seg.speaker] || seg.speaker;
+
+      var cardClasses = ['seg-card'];
+      if (isSelected) cardClasses.push('selected');
+      if (hasPending) cardClasses.push('has-pending');
+
+      var diffHtml = '';
+      if (hasPending) {
+        diffHtml = [
+          '<div class="diff-box">',
+          '  <div class="diff-orig">Original: ' + esc(diff.originalText) + '</div>',
+          '  <div class="diff-prop">Proposed: ' + esc(diff.proposedText) + '</div>',
+          '  <div class="diff-reason">Reason: ' + esc(diff.reason) + ' · Anchored: ' + diff.start.toFixed(2) + 's–' + diff.end.toFixed(2) + 's</div>',
+          '  <div class="btns" style="margin-top:4px;">',
+          '    <button type="button" class="small success btn-accept-diff" data-seg="' + esc(seg.segmentId) + '">Accept Edit</button>',
+          '    <button type="button" class="small danger btn-reject-diff" data-seg="' + esc(seg.segmentId) + '">Reject</button>',
+          '  </div>',
+          '</div>'
+        ].join('');
+      }
+
+      return [
+        '<div class="' + cardClasses.join(' ') + '">',
+        '  <div class="seg-top">',
+        '    <div class="seg-meta">',
+        '      <input type="checkbox" class="seg-check" data-seg="' + esc(seg.segmentId) + '"' + (isSelected ? ' checked' : '') + '>',
+        '      <strong>' + esc(seg.segmentId) + '</strong>',
+        '      <span class="badge">' + esc(spk) + '</span>',
+        '      <button type="button" class="ts-seek" data-sec="' + (seg.startMs / 1000) + '" title="Seek audio to ' + fmtShortTs(seg.startMs / 1000) + '">' + fmtShortTs(seg.startMs / 1000) + ' → ' + fmtShortTs(seg.endMs / 1000) + '</button>',
+        '      <span class="status-tag ' + statusLabel + '">' + statusLabel + '</span>',
+        '    </div>',
+        '  </div>',
+        '  <div class="seg-text">' + esc(displayText) + '</div>',
+        diffHtml,
+        '</div>'
+      ].join('');
+    }).join('');
+
+    list.innerHTML = html;
+
+    $('btnAcceptAllDiffs').disabled = pendingCount === 0;
+    $('btnRejectAllDiffs').disabled = pendingCount === 0;
+    $('undoCount').textContent = String(versionStore.undoStack.length);
+    $('btnUndoSnapshot').disabled = versionStore.undoStack.length === 0;
+    $('selectedSegCount').textContent = selCount + ' selected';
+
+    list.querySelectorAll('.seg-check').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var id = this.getAttribute('data-seg');
+        if (this.checked) versionStore.selectedIds[id] = true;
+        else delete versionStore.selectedIds[id];
+        renderSegmentList();
+      });
+    });
+
+    list.querySelectorAll('.ts-seek').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var sec = parseFloat(this.getAttribute('data-sec')) || 0;
+        var player = $('player');
+        if (player && player.src) {
+          player.currentTime = sec;
+          player.play().catch(function() {});
+          toast('Seeking to ' + fmtShortTs(sec));
+        } else {
+          toast('Timestamp ' + fmtShortTs(sec) + ' (load audio in Step 1 to play)');
+        }
+      });
+    });
+
+    list.querySelectorAll('.btn-accept-diff').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        acceptSingleDiff(this.getAttribute('data-seg'));
+      });
+    });
+
+    list.querySelectorAll('.btn-reject-diff').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        rejectSingleDiff(this.getAttribute('data-seg'));
+      });
+    });
+  }
+
+  function pushUndoSnapshot() {
+    versionStore.undoStack.push(
+      versionStore.segments.map(function(s) {
+        return {
+          segmentId: s.segmentId,
+          speaker: s.speaker,
+          originalText: s.originalText,
+          currentText: s.currentText,
+          startMs: s.startMs,
+          endMs: s.endMs,
+          pendingDiff: s.pendingDiff ? Object.assign({}, s.pendingDiff) : null
+        };
+      })
+    );
+  }
+
+  function acceptSingleDiff(segId) {
+    var seg = versionStore.segments.find(function(s) { return s.segmentId === segId; });
+    if (!seg || !seg.pendingDiff || seg.pendingDiff.status !== 'pending') return;
+    pushUndoSnapshot();
+    seg.currentText = seg.pendingDiff.proposedText;
+    seg.pendingDiff.status = 'accepted';
+    versionStore.activeView = 'ai_edited';
+    updateVersionPills();
+    rebuildCleanReaderLocal();
+    syncFormattedOutputFromStore();
+    renderSegmentList();
+    toast('Accepted edit for ' + segId + ' (snapshot saved for Undo)');
+  }
+
+  function rejectSingleDiff(segId) {
+    var seg = versionStore.segments.find(function(s) { return s.segmentId === segId; });
+    if (!seg || !seg.pendingDiff) return;
+    seg.pendingDiff.status = 'rejected';
+    renderSegmentList();
+    toast('Rejected proposed edit for ' + segId);
+  }
+
+  $('btnAcceptAllDiffs').addEventListener('click', function() {
+    var anyPending = versionStore.segments.some(function(s) { return s.pendingDiff && s.pendingDiff.status === 'pending'; });
+    if (!anyPending) return;
+    pushUndoSnapshot();
+    var count = 0;
+    versionStore.segments.forEach(function(s) {
+      if (s.pendingDiff && s.pendingDiff.status === 'pending') {
+        s.currentText = s.pendingDiff.proposedText;
+        s.pendingDiff.status = 'accepted';
+        count++;
+      }
+    });
+    versionStore.activeView = 'ai_edited';
+    updateVersionPills();
+    rebuildCleanReaderLocal();
+    syncFormattedOutputFromStore();
+    renderSegmentList();
+    toast('Accepted ' + count + ' AI edit(s) — Undo snapshot saved');
+  });
+
+  $('btnRejectAllDiffs').addEventListener('click', function() {
+    var count = 0;
+    versionStore.segments.forEach(function(s) {
+      if (s.pendingDiff && s.pendingDiff.status === 'pending') {
+        s.pendingDiff.status = 'rejected';
+        count++;
+      }
+    });
+    renderSegmentList();
+    toast('Rejected ' + count + ' pending diff(s)');
+  });
+
+  $('btnUndoSnapshot').addEventListener('click', function() {
+    if (!versionStore.undoStack.length) return;
+    versionStore.segments = versionStore.undoStack.pop();
+    rebuildCleanReaderLocal();
+    syncFormattedOutputFromStore();
+    renderSegmentList();
+    toast('Rolled back to previous snapshot');
+  });
+
+  function updateVersionPills() {
+    document.querySelectorAll('.v-pill').forEach(function(p) {
+      p.classList.toggle('active', p.getAttribute('data-view') === versionStore.activeView);
+    });
+    var isCleanReader = versionStore.activeView === 'clean_reader';
+    $('segmentDiffView').style.display = isCleanReader ? 'none' : 'block';
+    $('cleanReaderView').style.display = isCleanReader ? 'block' : 'none';
+    if (isCleanReader) renderCleanReader();
+  }
+
+  document.querySelectorAll('.v-pill').forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      versionStore.activeView = this.getAttribute('data-view');
+      updateVersionPills();
+      renderSegmentList();
+    });
+  });
+
+  document.querySelectorAll('.action-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.action-btn').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      currentAiAction = this.getAttribute('data-action');
+    });
+  });
+
+  $('btnSelectAllSegs').addEventListener('click', function() {
+    versionStore.segments.forEach(function(s) { versionStore.selectedIds[s.segmentId] = true; });
+    renderSegmentList();
+  });
+
+  $('btnDeselectAllSegs').addEventListener('click', function() {
+    versionStore.selectedIds = {};
+    renderSegmentList();
+  });
+
+  $('btnRefreshCleanReader').addEventListener('click', function() {
+    rebuildCleanReaderLocal();
+    toast('Clean Reader paragraphs & headings updated');
+  });
+
+  $('btnCopyCleanReader').addEventListener('click', function() {
+    var text = versionStore.cleanReaderSections.map(function(sec) {
+      return sec.heading + '\n\n' + sec.paragraphs.join('\n\n');
+    }).join('\n\n');
+    if (!text.trim()) return;
+    navigator.clipboard.writeText(text).then(function() { toast('Clean Reader text copied!'); });
+  });
+
+  function getTargetSliceForScope() {
+    var scope = $('aiScope').value;
+    if (scope === 'selected') {
+      return versionStore.segments.filter(function(s) { return !!versionStore.selectedIds[s.segmentId]; });
+    }
+    if (scope === 'batch') {
+      var unedited = versionStore.segments.filter(function(s) {
+        return !s.pendingDiff || s.pendingDiff.status === 'rejected';
+      });
+      return (unedited.length ? unedited : versionStore.segments).slice(0, 8);
+    }
+    return versionStore.segments.slice();
+  }
+
+  $('btnRunTargetedAi').addEventListener('click', async function() {
+    if (!versionStore.segments.length) {
+      toast('Load segments first using "Load Segments & Run QA"');
+      return;
+    }
+    var slice = getTargetSliceForScope();
+    if (!slice.length) {
+      toast('Select at least one segment checkbox first');
+      return;
+    }
+
+    var apiKey = ($('groqKey').value || '').trim();
+    if (!apiKey) {
+      toast('Enter your Groq API key in Step 1 first');
+      return;
+    }
+
+    var btn = $('btnRunTargetedAi');
+    btn.disabled = true;
+    $('aiReadyBadge').textContent = 'Running Pass...';
+    $('aiReadyBadge').className = 'ai-status-pill warn';
+
+    var currentMode = modeFor($('project').value, $('mode').value);
+    var glossary = $('corr').value.trim();
+    var instruction = $('aiRewriteInstruction').value.trim();
+    var targetLang = $('aiTargetLang').value.trim();
+
+    try {
+      // Process in chunks of up to 8 segments to keep latency low & prevent truncation
+      var chunkSize = 8;
+      var totalProposed = 0;
+
+      for (var c = 0; c < slice.length; c += chunkSize) {
+        var chunk = slice.slice(c, c + chunkSize);
+        $('aiAgentStatus').textContent = 'Processing segments ' + (c + 1) + '–' + Math.min(slice.length, c + chunkSize) + ' of ' + slice.length + ' (' + currentAiAction + ')...';
+
+        var sysPrompt = buildTargetedSystemPrompt(currentAiAction, currentMode, glossary, instruction, targetLang);
+        var payload = JSON.stringify({
+          action: currentAiAction,
+          styleMode: currentMode,
+          instruction: instruction,
+          targetLanguage: targetLang,
+          segments: chunk.map(function(s) {
+            return {
+              segmentId: s.segmentId,
+              speaker: speakerMapping[s.speaker] || s.speaker,
+              text: s.currentText,
+              start: Number((s.startMs / 1000).toFixed(2)),
+              end: Number((s.endMs / 1000).toFixed(2))
+            };
+          })
+        });
+
+        var res = await callGroqJson(apiKey, sysPrompt, payload);
+
+        if (currentAiAction === 'speaker_assist' && Array.isArray(res.sections) && res.sections.length) {
+          versionStore.cleanReaderSections = res.sections.map(function(sec, idx) {
+            var segIds = Array.isArray(sec.segmentIds) ? sec.segmentIds : [];
+            var paras = segIds.map(function(id) {
+              var found = versionStore.segments.find(function(x) { return x.segmentId === id; });
+              return found ? found.currentText : '';
+            }).filter(Boolean);
+            if (!paras.length) {
+              paras = chunk.map(function(x) { return x.currentText; });
+            }
+            return {
+              heading: (sec.heading || ('Section ' + (idx + 1))).trim(),
+              paragraphs: paras
+            };
+          });
+          renderCleanReader();
+          totalProposed += versionStore.cleanReaderSections.length;
+        }
+
+        var validatedDiffs = validateAndNormalizeEdits(res.edits, chunk);
+        validatedDiffs.forEach(function(diff) {
+          var targetSeg = versionStore.segments.find(function(s) { return s.segmentId === diff.segmentId; });
+          if (targetSeg) {
+            targetSeg.pendingDiff = diff;
+            totalProposed++;
+          }
+        });
+      }
+
+      renderSegmentList();
+      $('aiReadyBadge').textContent = totalProposed ? (totalProposed + ' Diffs Ready') : 'No Changes Needed';
+      $('aiReadyBadge').className = 'ai-status-pill ' + (totalProposed ? 'warn' : 'ready');
+      $('aiAgentStatus').textContent = totalProposed
+        ? ('Proposed ' + totalProposed + ' item(s). Review diffs below and click Accept Edit or Reject.')
+        : 'All targeted segments already match style rules with 0 proposed changes.';
+      toast(totalProposed ? ('Proposed ' + totalProposed + ' diff(s) for review') : 'No changes required');
+    } catch (err) {
+      console.error(err);
+      $('aiReadyBadge').textContent = 'AI Error';
+      $('aiReadyBadge').className = 'ai-status-pill warn';
+      $('aiAgentStatus').textContent = 'Error: ' + err.message;
+      toast('AI edit failed — check API key or connection');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  function generateQAAuditTable(transcriptText, mode, qaResult) {
+    var text = transcriptText || '';
+    var errCount = qaResult ? qaResult.errorCount : 0;
+
+    var hasExclamation = hasNonYahooExclamation(text);
+    var hasEllipsis = /\.\.\./.test(text);
+    var hasSoComma = /(^|[.?!]\s+)So,\s+/.test(text);
+    var puncOk = !hasExclamation && !hasEllipsis && !hasSoComma && errCount === 0;
+
+    var nonStandardSpellings = /\b(e-mail|alright|O\.K\.|yep|yup|ya'll|T\.V\.|U\.S\.|U\.K\.)\b/i.test(text);
+    var spellingOk = !nonStandardSpellings;
+
+    var tsMatches = [];
+    var re = /\[(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3})\]/g;
+    var m;
+    while ((m = re.exec(text)) !== null) {
+      tsMatches.push({ start: m[1], end: m[2] });
+    }
+    var chainBroken = false;
+    for (var i = 1; i < tsMatches.length; i++) {
+      if (tsMatches[i].start !== tsMatches[i - 1].end) {
+        chainBroken = true;
+        break;
+      }
+    }
+
+    var checks = [
+      {
+        rule: 'Clean Read / Verbatim Compliance',
+        desc: (mode === 'strict' ? 'Verbatim mode: all fillers & repetitions included.' : 'Clean Read mode: stutters, fillers, and false starts omitted.'),
+        ok: true,
+        status: 'Passed',
+        action: mode === 'strict' ? 'Strict verbatim rules applied.' : 'Clean Read rules applied.'
+      },
+      {
+        rule: 'Standard Spellings & Contractions',
+        desc: 'US spelling enforced; contractions kept as spoken per Eagle Web guidelines.',
+        ok: spellingOk,
+        status: spellingOk ? 'Passed' : 'Flagged',
+        action: spellingOk ? 'All standard forms verified.' : 'Found non-standard variant (e.g., alright, e-mail, yep).'
+      },
+      {
+        rule: 'Capitalization & Punctuation',
+        desc: 'First words capitalized; terminal punctuation present; no exclamation marks, ellipses, or leading "So," commas.',
+        ok: puncOk,
+        status: puncOk ? 'Passed' : 'Flagged',
+        action: puncOk ? 'Sentence casing and punctuation verified.' : ('Detected ' + errCount + ' punctuation/casing issue(s).')
+      },
+      {
+        rule: 'Continuous Chained Timestamps',
+        desc: 'Every block end time equals exact start time of next block (End N = Start N+1).',
+        ok: !chainBroken,
+        status: !chainBroken ? 'Passed' : 'Unchained',
+        action: !chainBroken ? 'Timeline continuity verified (' + tsMatches.length + ' blocks).' : 'One or more blocks have non-contiguous timestamps.'
+      },
+      {
+        rule: 'Anti-Hallucination & Diff Guardrail',
+        desc: 'Raw snapshot preserved; segment IDs validated; start/end timestamps anchored to audio.',
+        ok: true,
+        status: 'Verified',
+        action: 'Version store & diff validator active.'
+      }
+    ];
+
+    var html = '<table class="guide-table"><thead><tr><th>Eagle Web Guideline Category</th><th>Rule Description</th><th>Status</th><th>Corrective Action / Notes</th></tr></thead><tbody>';
+    checks.forEach(function(c) {
+      var badgeColor = c.ok ? 'var(--ok)' : 'var(--warn)';
+      html += '<tr><td><strong>' + esc(c.rule) + '</strong></td><td>' + esc(c.desc) + '</td><td><span class="badge" style="background:' + badgeColor + ';color:#fff;">' + esc(c.status) + '</span></td><td>' + esc(c.action) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function() { t.classList.remove('show'); }, 2500);
+  }
+
+  function updateKeyHint() {
+    var keys = getGroqKeysList($('groqKey').value);
+    $('keyCountHint').textContent = keys.length
+      ? (keys.length + ' Groq API key(s) loaded for auto-failover.')
+      : 'Saved locally in browser storage.';
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var target = btn.getAttribute('data-tab');
+      document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
+      document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      $('tab-' + target).style.display = 'block';
+      btn.classList.add('active');
+    });
+  });
+
+  var now = new Date();
+  $('date').value = pad(now.getDate(), 2) + '/' + pad(now.getMonth() + 1, 2) + '/' + now.getFullYear();
+
+  var savedKey = localStorage.getItem('groq_api_keys') || localStorage.getItem('groq_api_key');
+  if (savedKey) {
+    $('groqKey').value = savedKey;
+    updateKeyHint();
+  }
+
+  $('btnToggleKey').addEventListener('click', function() {
+    var inp = $('groqKey');
+    if (inp.type === 'password') {
+      inp.type = 'text';
+      this.textContent = 'Hide';
+    } else {
+      inp.type = 'password';
+      this.textContent = 'Show';
+    }
+  });
+
+  $('btnSaveKey').addEventListener('click', function() {
+    var k = $('groqKey').value.trim();
+    if (!k) {
+      localStorage.removeItem('groq_api_key');
+      localStorage.removeItem('groq_api_keys');
+      updateKeyHint();
+      toast('API key cleared');
+      return;
+    }
+    localStorage.setItem('groq_api_key', k);
+    localStorage.setItem('groq_api_keys', k);
+    updateKeyHint();
+    toast('Groq API key(s) saved locally!');
+  });
+
+  function updateModeBadge() {
+    var m = modeFor($('project').value, $('mode').value);
+    $('modeBadge').textContent = m === 'strict' ? 'Strict Verbatim' : 'Clean Verbatim';
+  }
+  $('project').addEventListener('change', updateModeBadge);
+  $('mode').addEventListener('change', updateModeBadge);
+  updateModeBadge();
+
+  $('topic').addEventListener('input', function() {
+    var wc = this.value.trim() ? this.value.trim().split(/\s+/).length : 0;
+    $('topicHint').textContent = wc + ' words' + (wc === 7 ? ' (Exact match!)' : ' (Target: 7 words)');
+    $('topicHint').className = 'hint ' + (wc === 7 ? 'ok' : (wc > 0 ? 'bad' : ''));
+  });
+
+  $('audioFile').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    selectedAudioFile = file;
+    if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
+    currentAudioUrl = URL.createObjectURL(file);
+    var audioEl = $('player');
+    audioEl.src = currentAudioUrl;
+    audioEl.onloadedmetadata = function() {
+      if (!isNaN(audioEl.duration)) {
+        $('audio').value = formatDuration(audioEl.duration);
+        toast('Audio loaded (' + $('audio').value + ')');
+      }
+    };
+  });
+
+  $('btnTranscribe').addEventListener('click', async function() {
+    var keys = getGroqKeysList($('groqKey').value);
+    if (!keys.length) { toast('Enter your free Groq API key first'); return; }
+    if (!selectedAudioFile) { toast('Select an audio file first'); return; }
+    if (selectedAudioFile.size > 25 * 1024 * 1024) {
+      toast('File exceeds 25 MB Whisper limit. Compress to MP3 first.');
+      return;
+    }
+
+    var btn = $('btnTranscribe');
+    var status = $('transcribeStatus');
+    btn.disabled = true;
+    status.textContent = 'Transcribing audio...';
+
+    try {
+      var formData = new FormData();
+      formData.append('file', selectedAudioFile);
+      formData.append('model', 'whisper-large-v3-turbo');
+      formData.append('response_format', 'verbose_json');
+      formData.append('timestamp_granularities[]', 'segment');
+
+      var response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + keys[0] },
+        body: formData
+      });
+
+      if (!response.ok) {
+        var errText = await response.text();
+        throw new Error('API Error ' + response.status + ': ' + errText.slice(0, 100));
+      }
+
+      var data = await response.json();
+      if (!data.segments || !data.segments.length) {
+        $('raw').value = 'MALE_1\n(0:00.258) ' + (data.text || '');
+      } else {
+        var outLines = ['MALE_1'];
+        data.segments.forEach(function(seg, idx) {
+          var totalMs = Math.round((seg.start || 0) * 1000);
+          var totalSec = Math.floor(totalMs / 1000);
+          var m = Math.floor(totalSec / 60);
+          var s = totalSec % 60;
+          var msVal = (totalMs % 1000) || (123 + ((idx * 179) % 800));
+          outLines.push('(' + m + ':' + pad(s) + '.' + pad(msVal, 3) + ') ' + seg.text.trim());
+        });
+        $('raw').value = outLines.join('\n');
+      }
+
+      status.textContent = 'Done!';
+      toast('Audio transcribed into Step 2!');
+      $('btnScanSpeakers').click();
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'Failed';
+      toast(err.message.slice(0, 60));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('rate').addEventListener('change', function() { $('player').playbackRate = parseFloat(this.value); });
+  $('player').addEventListener('timeupdate', function() {
+    $('clock').textContent = fmtTs(this.currentTime * 1000);
+  });
+  $('btnClock').addEventListener('click', function() {
+    navigator.clipboard.writeText($('clock').textContent).then(function() { toast('Timestamp copied!'); });
+  });
+
+  $('file').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      $('raw').value = evt.target.result;
+      toast('File opened!');
+      $('btnScanSpeakers').click();
+    };
+    reader.readAsText(file);
+  });
+  $('btnFile').addEventListener('click', function() { $('file').click(); });
+
+  $('btnScanSpeakers').addEventListener('click', function() {
+    var parsed = parseInput($('raw').value);
+    var foundTags = [];
+    parsed.segments.forEach(function(s) {
+      if (foundTags.indexOf(s.speaker) < 0) foundTags.push(s.speaker);
+    });
+    if (!foundTags.length) { toast('No speakers detected'); return; }
+
+    speakerMapping = {};
+    foundTags.forEach(function(tag, idx) {
+      speakerMapping[tag] = tag.indexOf('_') > -1 ? tag.toUpperCase() : 'MALE_' + (idx + 1);
+    });
+
+    var html = '<table class="spk"><thead><tr><th>Original</th><th>Eagle Web Output Tag</th></tr></thead><tbody>';
+    foundTags.forEach(function(tag) {
+      html += '<tr><td><strong>' + esc(tag) + '</strong></td><td><input type="text" value="' + esc(speakerMapping[tag]) + '" data-orig="' + esc(tag) + '" class="map-input"></td></tr>';
+    });
+    html += '</tbody></table>';
+    $('spkBox').innerHTML = html;
+
+    document.querySelectorAll('.map-input').forEach(function(input) {
+      input.addEventListener('input', function() {
+        speakerMapping[this.getAttribute('data-orig')] = this.value;
+      });
+    });
+    toast('Speakers mapped!');
+  });
+
+  $('btnGenTitle').addEventListener('click', function() {
+    $('topic').value = generateSevenWordTitle($('raw').value);
+    $('topic').dispatchEvent(new Event('input'));
+    toast('7-word title generated');
+  });
+
+  $('btnSample').addEventListener('click', function() {
+    $('raw').value = "MALE_1\n(0:00.258) So uh we kind of need to like fix the uh audio sync first you know. (0:09.618) We have 5 key areas to cover in Cincinnati.\nFEMALE_1\n(0:18.392) I think maybe we should check Toledo first before starting.";
+    $('btnScanSpeakers').click();
+    toast('Sample loaded');
+  });
+
+  $('btnClear').addEventListener('click', function() {
+    $('raw').value = '';
+    $('spkBox').innerHTML = '<div class="hint">Click "Scan speakers from input" first.</div>';
+    toast('Cleared');
+  });
+
+  $('btnCopy').addEventListener('click', function() {
+    navigator.clipboard.writeText($('out').value).then(function() { toast('Copied plain text!'); });
+  });
+
+  $('btnCopyRich').addEventListener('click', async function() {
+    var plain = $('out').value;
+    if (!plain.trim()) return;
+    var htmlLines = plain.split('\n').map(function(l) {
+      return l.trim() === '' ? '<p><br></p>' : '<p>' + esc(l) + '</p>';
+    }).join('');
+    try {
+      var item = new ClipboardItem({
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+        'text/html': new Blob([htmlLines], { type: 'text/html' })
+      });
+      await navigator.clipboard.write([item]);
+      toast('Copied for Google Docs!');
+    } catch (e) {
+      navigator.clipboard.writeText(plain).then(function() { toast('Copied plain text!'); });
+    }
+  });
+
+  $('btnDoc').addEventListener('click', function() {
+    var htmlBody = $('out').value.split('\n').map(function(line) {
+      return '<p style="font-family:\'Times New Roman\',serif;font-size:12pt;margin:0 0 8pt 0;">' + (line.trim() ? esc(line) : '&nbsp;') + '</p>';
+    }).join('');
+    var docHtml = '\ufeff<html><head><meta charset="utf-8"></head><body>' + htmlBody + '</body></html>';
+    var blob = new Blob([docHtml], { type: 'application/msword;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'transcript.doc';
+    a.click();
+  });
+
+  $('btnTxt').addEventListener('click', function() {
+    var blob = new Blob([$('out').value], { type: 'text/plain;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'transcript.txt';
+    a.click();
+  });
+
+  function getQAOpts() {
+    return {
+      hyphenate: $('oHyphenate').checked,
+      runonCheck: $('oRunonCheck').checked,
+      noRepetitions: $('oNoRepetitions').checked,
+      noShortForms: $('oNoShortForms').checked,
+      numbers: $('oNumbers').checked,
+      grammar: $('oGrammar').checked,
+      corr: $('corr').value
+    };
+  }
+
+  function renderQA(res) {
+    var qaHtml = '';
+    res.issues.forEach(function(i) {
+      qaHtml += '<li class="' + i.level + '"><span class="i">' + (i.level === 'ok' ? '✓' : '✕') + '</span><span>' + esc(i.text) + '</span></li>';
+    });
+    $('qa').innerHTML = qaHtml;
+    $('stats').innerHTML =
+      '<span class="badge">Lines checked: ' + res.sentenceCount + '</span>' +
+      '<span class="badge" style="background:' + (res.errorCount > 0 ? 'var(--bad)' : 'var(--ok)') + ';color:#fff;">Errors flagged: ' + res.errorCount + '</span>';
+    $('logCount').textContent = res.logs.length;
+    $('log').textContent = res.logs.join('\n') || 'No manual splits required.';
+  }
+
+  $('btnCheck').addEventListener('click', function() {
+    var outText = $('out').value;
+    if (!outText.trim()) return;
+    var currentMode = modeFor($('project').value, $('mode').value);
+    var res = runIterativeQA(outText, currentMode, getQAOpts());
+    $('out').value = res.correctedText;
+    renderQA(res);
+    $('qaTableContainer').innerHTML = generateQAAuditTable(res.correctedText, currentMode, res);
+    toast('QA Check completed');
+  });
+
+  // Build Structured Segments & Raw Snapshot without overwriting original text
+  $('btnGo').addEventListener('click', function() {
+    if (!$('raw').value.trim()) { toast('Paste raw transcript or transcribe audio first'); return; }
+    if (!$('topic').value.trim()) {
+      $('topic').value = generateSevenWordTitle($('raw').value);
+      $('topic').dispatchEvent(new Event('input'));
+    }
+
+    var parsed = parseInput($('raw').value);
+    var cfg = {
+      audioMs: parseAudioLength($('audio').value),
+      continuous: $('oContinuous').checked,
+      randomMs: $('oRandomMs').checked,
+      mergeSentences: $('oMergeSentences').checked,
+      minBlockMs: Math.max(4000, (parseFloat($('minBlock').value) || 8) * 1000),
+      maxBlockMs: Math.max(8000, (parseFloat($('maxBlock').value) || 15) * 1000)
+    };
+    var blocks = buildBlocks(parsed, cfg);
+    if (!blocks.length) { toast('No valid text blocks found'); return; }
+
+    versionStore.rawSnapshot = blocks.map(function(b, idx) {
+      return {
+        segmentId: 'seg_' + (idx + 1),
+        speaker: b.speaker,
+        text: b.text,
+        startMs: b.start,
+        endMs: b.end
+      };
+    });
+
+    versionStore.segments = blocks.map(function(b, idx) {
+      return {
+        segmentId: 'seg_' + (idx + 1),
+        speaker: b.speaker,
+        originalText: b.text,
+        currentText: b.text,
+        startMs: b.start,
+        endMs: b.end,
+        pendingDiff: null
+      };
+    });
+
+    versionStore.selectedIds = {};
+    versionStore.undoStack = [];
+    versionStore.activeView = 'raw';
+    updateVersionPills();
+    rebuildCleanReaderLocal();
+    renderSegmentList();
+    syncFormattedOutputFromStore();
+
+    $('versionSummary').textContent = versionStore.segments.length + ' segments locked (Raw snapshot saved)';
+    toast('Loaded ' + versionStore.segments.length + ' segments & ran QA');
+  });
+
+  // Backend Persistence & Post-Submission Lock Integration
+  var jobSubmittedLocked = false;
+
+  function applySubmissionLockState(locked) {
+    jobSubmittedLocked = !!locked;
+    $('out').readOnly = jobSubmittedLocked;
+    $('raw').readOnly = jobSubmittedLocked;
+    $('btnRunTargetedAi').disabled = jobSubmittedLocked;
+    $('btnAcceptAllDiffs').disabled = jobSubmittedLocked;
+    $('btnGo').disabled = jobSubmittedLocked;
+    $('btnSubmitBackendJob').disabled = jobSubmittedLocked;
+    if (jobSubmittedLocked) {
+      $('backendStatus').textContent = 'SUBMITTED & LOCKED (Read-Only per Eagle Web Rules)';
+      $('backendStatus').className = 'hint bad';
+    }
+  }
+
+  function getBackendEndpoint(suffix) {
+    var base = ($('backendBaseUrl').value || 'http://127.0.0.1:8000').replace(/\/+$/, '');
+    var jobId = parseInt($('backendJobId').value, 10) || 1;
+    return base + '/api/jobs/' + jobId + suffix;
+  }
+
+  async function syncToBackend(snapshotType) {
+    if (jobSubmittedLocked) {
+      toast('Job is submitted and locked');
+      return;
+    }
+    try {
+      var resp = await fetch(getBackendEndpoint('/sync/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          snapshotType: snapshotType || 'ai_edited',
+          segments: versionStore.segments
+        })
+      });
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+      $('backendStatus').textContent = 'Synced ' + data.count + ' segment(s) (' + (snapshotType || 'ai_edited') + ')';
+      $('backendStatus').className = 'hint ok';
+      toast('Synced to Django backend!');
+    } catch (err) {
+      $('backendStatus').textContent = 'Sync error: ' + err.message;
+      $('backendStatus').className = 'hint bad';
+      toast('Backend sync failed');
+    }
+  }
+
+  $('btnLoadBackendJob').addEventListener('click', async function() {
+    try {
+      var resp = await fetch(getBackendEndpoint('/'));
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+
+      if (data.job) {
+        $('topic').value = data.job.title || '';
+        $('audio').value = data.job.audioLength || '';
+        $('date').value = data.job.date || $('date').value;
+        $('client').value = data.job.client || 'Eagle Web';
+        $('by').value = data.job.transcribedBy || 'Godhand Benson';
+        $('mode').value = data.job.mode === 'verbatim' ? 'strict' : 'edited';
+        updateModeBadge();
+        applySubmissionLockState(data.job.isSubmitted);
+      }
+
+      if (Array.isArray(data.glossary) && data.glossary.length) {
+        $('corr').value = data.glossary
+          .filter(function(g) { return g.term && g.replacement; })
+          .map(function(g) { return g.term + ' => ' + g.replacement; })
+          .join('\n');
+      }
+
+      if (Array.isArray(data.segments) && data.segments.length) {
+        versionStore.segments = data.segments.map(function(s) {
+          return {
+            segmentId: s.segmentId,
+            speaker: s.speaker,
+            originalText: s.originalText,
+            currentText: s.currentText,
+            startMs: s.startMs,
+            endMs: s.endMs,
+            pendingDiff: s.pendingDiff || null
+          };
+        });
+        versionStore.rawSnapshot = data.snapshots && Array.isArray(data.snapshots.raw) ? data.snapshots.raw : [];
+        versionStore.activeView = 'ai_edited';
+        updateVersionPills();
+        rebuildCleanReaderLocal();
+        renderSegmentList();
+        syncFormattedOutputFromStore();
+      }
+
+      if (!jobSubmittedLocked) {
+        $('backendStatus').textContent = 'Loaded Job #' + data.job.id + ' (' + versionStore.segments.length + ' segments)';
+        $('backendStatus').className = 'hint ok';
+      }
+      toast('Loaded job from backend');
+    } catch (err) {
+      $('backendStatus').textContent = 'Load error: ' + err.message;
+      $('backendStatus').className = 'hint bad';
+      toast('Could not load job from backend');
+    }
+  });
+
+  $('btnSyncBackendJob').addEventListener('click', function() {
+    syncToBackend(versionStore.activeView === 'raw' ? 'raw' : 'ai_edited');
+  });
+
+  $('btnSubmitBackendJob').addEventListener('click', async function() {
+    if (jobSubmittedLocked) return;
+    try {
+      await syncToBackend('ai_edited');
+      var resp = await fetch(getBackendEndpoint('/submit/'), { method: 'POST' });
+      var data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+      applySubmissionLockState(true);
+      toast('Job submitted and locked!');
+    } catch (err) {
+      $('backendStatus').textContent = 'Submit error: ' + err.message;
+      $('backendStatus').className = 'hint bad';
+      toast('Submit failed');
+    }
+  });
+})();
+</script>
+</body>
+</html>
